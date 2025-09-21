@@ -32,6 +32,12 @@ async def generate_questions(request: GenerateRequest):
         "stream": False
     }
     
+    payload = {
+        "model": "mistral:7b",
+        "prompt": prompt,
+        "stream": False
+    }
+    
     try:
         response = requests.post(OLLAMA_URL, json=payload)
         response.raise_for_status()
