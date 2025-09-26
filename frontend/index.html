@@ -1,62 +1,140 @@
-<!DOCTYPE html><!doctype html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PopQuiz - AI-Powered Learning</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
 
-<html lang="en"><html lang="en">
+        /* --- Basic Reset & Font --- */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden; 
+        }
 
-<head>  <head>
+        /* --- Main Container --- */
+        .landing-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            color: #ffffff;
+            position: relative; 
+            text-align: center;
+        }
 
-    <meta charset="UTF-8">    <meta charset="UTF-8" />
+        /* --- 3D Grid Background --- */
+        .grid-background {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            /* --- CHANGE HERE: Opacity increased from 0.2 to 0.4 --- */
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform-style: preserve-3d;
+            transform: perspective(500px) rotateX(75deg);
+        }
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        /* --- Content Wrapper --- */
+        .content {
+            position: relative; 
+            z-index: 1;
+            padding: 20px;
+        }
 
-    <title>EduAI - Simple Test</title>    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        /* --- Title Styling --- */
+        .title {
+            font-family: 'Anton', sans-serif;
+            font-size: clamp(4rem, 15vw, 10rem); 
+            font-weight: 400; 
+            margin: 0;
+            line-height: 1;
+            text-transform: uppercase; 
+        }
 
-    <link rel="stylesheet" href="main.css">    <meta name="description" content="EduAI - AI-Powered Educational Platform for teachers and students" />
+        /* --- Subtitle Styling --- */
+        .subtitle {
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-top: 10px;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+        }
 
-</head>    <meta name="keywords" content="education, AI, questions, assessment, teacher, student" />
+        /* --- Button Group --- */
+        .button-group {
+            display: flex;
+            gap: 20px; 
+            justify-content: center;
+        }
 
-<body>    <meta name="author" content="EduAI Team" />
+        /* --- Button Styling --- */
+        .cta-button {
+            padding: 12px 35px;
+            border: 2px solid #ffffff;
+            border-radius: 50px; 
+            color: #ffffff;
+            background-color: transparent;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease; 
+        }
 
-    <div class="container">    <title>EduAI - AI-Powered Educational Platform</title>
+        /* --- The Hover Effect --- */
+        .cta-button:hover {
+            background-color: #ffffff; 
+            color: #000000;            
+        }
+    </style>
+</head>
+<body>
 
-        <h1>EduAI Test Frontend</h1>  </head>
+    <div class="landing-container">
+        <div class="grid-background"></div>
 
-  <body>
-
-        <div class="form-section">    <div id="root"></div>
-
-            <h2>Test Question Generation</h2>    <script type="module" src="/src/main.tsx"></script>
-
-            <form id="questionForm">  </body>
-
-                <div class="form-group"></html>
-
-                    <label for="subject">Subject:</label>
-                    <select id="subject" required>
-                        <option value="Operating System">Operating System</option>
-                        <option value="Computer Networks">Computer Networks</option>
-                        <option value="Data Structures">Data Structures</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="numQuestions">Number of Questions:</label>
-                    <input type="number" id="numQuestions" min="1" max="10" value="3" required>
-                </div>
-
-                <button type="submit" id="generateBtn">Generate Questions</button>
-            </form>
-        </div>
-
-        <div class="results-section">
-            <h2>Generated Questions:</h2>
-            <div id="questionsList"></div>
-        </div>
-
-        <div class="status">
-            <p id="statusMessage">Ready to test...</p>
+        <div class="content">
+            <h1 class="title">POPQUIZ</h1>
+            <p class="subtitle">AI-POWERED LEARNING</p>
+            <div class="button-group">
+                <a href="faculty-login.html" class="cta-button">FACULTY</a>
+                <a href="#" class="cta-button" onclick="checkStudents()">STUDENTS</a>
+            </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // Test backend connection on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch('http://localhost:8000/');
+                if (!response.ok) throw new Error('Backend not responding');
+                console.log('Backend connected successfully');
+            } catch (error) {
+                console.warn('Backend connection failed:', error.message);
+                // Optionally alert user or show a message
+            }
+        };
+
+        // Placeholder for students button
+        function checkStudents() {
+            alert('Student interface coming soon!');
+        }
+    </script>
+
 </body>
 </html>
