@@ -192,29 +192,45 @@
     </div>
     
     <script>
-        // Test backend connection on page load
-        window.onload = async function() {
-            try {
-                const response = await fetch('http://localhost:8000/');
-                if (!response.ok) throw new Error('Backend not responding');
-                console.log('Backend connected successfully');
-            } catch (error) {
-                console.warn('Backend connection failed:', error.message);
-            }
-        };
-
         const signupForm = document.getElementById('signup-form-element');
+        const API_BASE_URL = 'http://localhost:8000';
 
-        signupForm.addEventListener('submit', function(event) {
+        signupForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+
             if (!email || !password) {
                 alert('Please fill in all fields.');
                 return;
             }
-            // Dummy signup - redirect to login
-            window.location.href = 'faculty-login.html';
+
+            if (password.length < 6) {
+                alert('Password must be at least 6 characters long.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Account created successfully! Please login with your credentials.');
+                    window.location.href = 'faculty-login.html';
+                } else {
+                    alert(data.detail || 'Signup failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                alert('Network error. Please check if the server is running.');
+            }
         });
     </script>
 

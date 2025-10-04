@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Quiz Generation - PopQuiz</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #000; 
+            color: #fff; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+        }
+        input, select, button { 
+            padding: 10px; 
+            margin: 10px 0; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+        #debug { 
+            background: #222; 
+            padding: 20px; 
+            margin: 20px 0; 
+            white-space: pre-wrap; 
+            font-family: monospace; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Quiz Generation</h1>
+        
+        <form id="testForm">
+            <input type="text" id="topic" placeholder="Topic (e.g., Deadlocks)" value="Deadlocks">
+            <select id="bloom-level">
+                <option value="Remembering">Remembering</option>
+                <option value="Understanding">Understanding</option>
+                <option value="Applying">Applying</option>
+            </select>
+            <select id="question-type">
+                <option value="Short Answer">Short Answer</option>
+                <option value="MCQ">MCQ</option>
+                <option value="True/False">True/False</option>
+            </select>
+            <input type="number" id="num-questions" value="3" min="1" max="10">
+            <button type="submit">Test Generate Questions</button>
+        </form>
+        
+        <div id="debug"></div>
+        
+        <button onclick="testLocalStorage()">Test LocalStorage</button>
+        <button onclick="goToDisplay()">Go to Display Questions</button>
+        <button onclick="clearStorage()">Clear LocalStorage</button>
+    </div>
+
+    <script>
+        const debugDiv = document.getElementById('debug');
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        function log(message) {
+            console.log(message);
+            debugDiv.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+        
+        function testLocalStorage() {
+            log('Testing localStorage...');
+            
+            const testQuestions = [
+                "What is a deadlock in operating systems?",
+                "List the four necessary conditions for deadlock.",
+                "Explain the difference between deadlock prevention and avoidance."
+            ];
+            
+            const testMetadata = {
+                topic: "Deadlocks",
+                bloomLevel: "Remembering", 
+                questionType: "Short Answer",
+                numQuestions: 3
+            };
+            
+            localStorage.setItem('generatedQuestions', JSON.stringify(testQuestions));
+            localStorage.setItem('quizMetadata', JSON.stringify(testMetadata));
+            
+            log('Stored test data in localStorage');
+            log('Questions: ' + JSON.stringify(testQuestions));
+            log('Metadata: ' + JSON.stringify(testMetadata));
+        }
+        
+        function goToDisplay() {
+            log('Navigating to display-questions.html...');
+            window.location.href = 'display-questions.html';
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('generatedQuestions');
+            localStorage.removeItem('quizMetadata');
+            localStorage.removeItem('authToken');
+            log('Cleared localStorage');
+        }
+        
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const topic = document.getElementById('topic').value;
+            const bloomLevel = document.getElementById('bloom-level').value;
+            const questionType = document.getElementById('question-type').value;
+            const numQuestions = parseInt(document.getElementById('num-questions').value);
+            
+            log('Form submitted with: ' + JSON.stringify({topic, bloomLevel, questionType, numQuestions}));
+            
+            // Set a fake auth token for testing
+            if (!localStorage.getItem('authToken')) {
+                localStorage.setItem('authToken', 'test-token-123');
+                log('Set test auth token');
+            }
+            
+            try {
+                log('Making API request to TEST endpoint...');
+                const response = await fetch(`${API_BASE_URL}/test/generate_questions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                        // No authorization header needed for test endpoint
+                    },
+                    body: JSON.stringify({
+                        topic: topic,
+                        bloom_level: bloomLevel,
+                        question_type: questionType,
+                        num_questions: numQuestions
+                    })
+                });
+                
+                log('Response status: ' + response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('Response data: ' + JSON.stringify(data));
+                    
+                    if (data.questions && data.questions.length > 0) {
+                        localStorage.setItem('generatedQuestions', JSON.stringify(data.questions));
+                        localStorage.setItem('quizMetadata', JSON.stringify({
+                            topic, bloomLevel, questionType, numQuestions
+                        }));
+                        
+                        log('Successfully stored questions in localStorage');
+                        log('Questions stored: ' + JSON.stringify(data.questions));
+                        
+                        // Auto navigate after a short delay
+                        setTimeout(() => {
+                            log('Auto-navigating to display-questions.html...');
+                            window.location.href = 'display-questions.html';
+                        }, 2000);
+                    } else {
+                        log('ERROR: No questions received from API');
+                    }
+                } else {
+                    const errorData = await response.json();
+                    log('API Error: ' + JSON.stringify(errorData));
+                }
+            } catch (error) {
+                log('Network Error: ' + error.message);
+                
+                // Use fallback questions
+                const fallbackQuestions = [
+                    `Define ${topic} and explain its key characteristics.`,
+                    `What are the main components of ${topic}?`,
+                    `How does ${topic} impact modern computing systems?`
+                ].slice(0, numQuestions);
+                
+                localStorage.setItem('generatedQuestions', JSON.stringify(fallbackQuestions));
+                localStorage.setItem('quizMetadata', JSON.stringify({
+                    topic, bloomLevel, questionType, numQuestions
+                }));
+                
+                log('Using fallback questions: ' + JSON.stringify(fallbackQuestions));
+                
+                setTimeout(() => {
+                    window.location.href = 'display-questions.html';
+                }, 2000);
+            }
+        });
+        
+        // Show current localStorage contents on page load
+        window.addEventListener('load', function() {
+            log('Page loaded. Current localStorage contents:');
+            log('authToken: ' + localStorage.getItem('authToken'));
+            log('generatedQuestions: ' + localStorage.getItem('generatedQuestions'));
+            log('quizMetadata: ' + localStorage.getItem('quizMetadata'));
+        });
+    </script>
+</body>
+</html>

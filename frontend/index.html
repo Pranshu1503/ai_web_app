@@ -112,29 +112,10 @@
             <p class="subtitle">AI-POWERED LEARNING</p>
             <div class="button-group">
                 <a href="faculty-login.html" class="cta-button">FACULTY</a>
-                <a href="#" class="cta-button" onclick="checkStudents()">STUDENTS</a>
+                <a href="#" class="cta-button">STUDENTS</a>
             </div>
         </div>
     </div>
-
-    <script>
-        // Test backend connection on page load
-        window.onload = async function() {
-            try {
-                const response = await fetch('http://localhost:8000/');
-                if (!response.ok) throw new Error('Backend not responding');
-                console.log('Backend connected successfully');
-            } catch (error) {
-                console.warn('Backend connection failed:', error.message);
-                // Optionally alert user or show a message
-            }
-        };
-
-        // Placeholder for students button
-        function checkStudents() {
-            alert('Student interface coming soon!');
-        }
-    </script>
 
 </body>
 </html>

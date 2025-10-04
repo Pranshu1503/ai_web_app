@@ -1,3 +1,5 @@
 fastapi
 uvicorn[standard]
 requests
+pydantic[email]
+python-multipart

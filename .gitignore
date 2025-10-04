@@ -273,5 +273,60 @@ logs
 ehthumbs.db
 Thumbs.db
 
-# Application specific
-# Add any project-specific files or directories you want to ignore
+# PopQuiz AI - Application specific files
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+popquiz.db
+database/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# AI Model files and cache
+.ollama/
+models/
+*.gguf
+*.bin
+
+# User uploaded content
+uploads/
+user_files/
+temp_files/
+
+# Quiz exports
+exports/
+*.pdf
+*.docx
+
+# Configuration files with secrets
+config.ini
+.env
+secrets.json
+
+# Development and testing
+test_output/
+debug_logs/
+.pytest_cache/
+.coverage
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.old
