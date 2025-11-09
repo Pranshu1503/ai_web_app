@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login - PopQuiz</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@300;400;600&display=swap');
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Poppins', sans-serif; overflow: hidden; }
+        .login-container { display: flex; justify-content: center; align-items: center; flex-direction: column; width: 100%; height: 100%; background-color: #000; color: #fff; position: relative; text-align: center; }
+        .grid-background { position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px); background-size: 40px 40px; transform-style: preserve-3d; transform: perspective(500px) rotateX(75deg); z-index: 0; }
+        .header { position: absolute; top: 40px; left: 40px; z-index: 2; text-align: left;}
+        .logo { font-family: 'Anton', sans-serif; font-size: 1.8rem; font-weight: 400; letter-spacing: 1px; }
+        .back-arrow { display: block; font-size: 2rem; color: #fff; text-decoration: none; margin-top: 5px; }
+        .login-form { position: relative; z-index: 1; width: 100%; max-width: 400px; padding: 20px; box-sizing: border-box; }
+        .login-form h1 { font-size: 2.5rem; font-weight: 300; letter-spacing: 4px; margin-bottom: 50px; }
+        .input-group { position: relative; margin-bottom: 35px; }
+        .input-group label { position: absolute; top: -8px; left: 25px; background-color: #000; padding: 0 10px; font-size: 0.8rem; color: #ccc; }
+        .input-field { width: 100%; padding: 14px 25px; background-color: transparent; border: 2px solid #fff; border-radius: 50px; color: #fff; font-size: 1rem; box-sizing: border-box; }
+    .input-field:focus { outline: none; border-color: #3498db; }
+    .input-field:-webkit-autofill, .input-field:-webkit-autofill:hover, .input-field:-webkit-autofill:focus, .input-field:-webkit-autofill:active { -webkit-text-fill-color: #fff !important; transition: background-color 5000s ease-in-out 0s; box-shadow: 0 0 0px 1000px #000 inset; }
+    .login-button { width: 100%; padding: 14px 35px; border: 2px solid #fff; border-radius: 50px; color: #fff; background-color: transparent; text-decoration: none; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease; margin-top: 20px; }
+    .login-button:hover { background-color: #fff; color: #000; }
+    .links { width: 100%; display: flex; justify-content: flex-end; margin-top: -25px; margin-bottom: 25px; padding-right: 15px; box-sizing: border-box; }
+    .links a { color: #ccc; text-decoration: none; font-size: 0.8rem; }
+    .links a:hover { text-decoration: underline; }
+    .signup-link { margin-top: 30px; font-size: 0.9rem; color: #ccc; }
+    .signup-link a { color: #fff; font-weight: 600; text-decoration: none; }
+    .signup-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="grid-background"></div>
+        <header class="header">
+            <div class="logo">POPQUIZ</div>
+            <a href="../index.html" class="back-arrow">&lt;</a>
+        </header>
+        <div class="login-form">
+            <h1>STUDENT LOGIN</h1>
+            <form id="student-auth-form">
+                <div class="input-group">
+                    <label for="email">EMAIL</label>
+                    <input type="email" id="email" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">PASSWORD</label>
+                    <input type="password" id="password" class="input-field" required>
+                </div>
+                <div class="links">
+                    <a href="#">Forgot Password?</a>
+                </div>
+                <button type="submit" class="login-button">LOGIN</button>
+            </form>
+            <p class="signup-link">Don't have an account? <a href="student-signup.html">Sign Up</a></p>
+        </div>
+    </div>
+    <script>
+        const authForm = document.getElementById('student-auth-form');
+        authForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (!email || !password) { alert('Please enter both email and password.'); return; }
+            // Call backend /student/login
+            fetch('http://localhost:8000/student/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            }).then(r => r.json().then(data => ({ok: r.ok, status: r.status, body: data})))
+            .then(result => {
+                if (!result.ok) { alert(result.body.detail || 'Login failed'); return; }
+                const token = result.body.token;
+                localStorage.setItem('popquiz_token', token);
+                alert('Authentication successful! Redirecting to your dashboard...');
+                window.location.href = 'student-dashboard.html';
+            }).catch(err => { console.error(err); alert('Unable to reach backend. Make sure the backend is running at http://localhost:8000'); });
+        });
+    </script>
+</body>
+</html>

@@ -7,115 +7,149 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
 
-        /* --- Basic Reset & Font --- */
+        /* --- NEW: CSS Variables for Theming --- */
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --grid-color: rgba(255, 255, 255, 0.4);
+            --border-color: #ffffff;
+            --button-text-color: #ffffff;
+            --button-hover-bg: #ffffff;
+            --button-hover-text: #000000;
+            --icon-stroke: #ffffff;
+        }
+
+        /* NEW: Light Mode Theme */
+        body.light-mode {
+            --bg-color: #f4f7f9; /* Light gray background */
+            --text-color: #111827; /* Dark text */
+            --grid-color: rgba(0, 0, 0, 0.1); /* Subtle dark grid */
+            --border-color: #111827; /* Dark border */
+            --button-text-color: #111827; /* Dark button text */
+            --button-hover-bg: #111827; /* Dark hover background */
+            --button-hover-text: #ffffff; /* White hover text */
+            --icon-stroke: #111827; /* Dark icon */
+        }
+        /* --- End Theming Variables --- */
+
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
+            margin: 0; padding: 0; width: 100%; height: 100%;
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            overflow: hidden; 
+            overflow: hidden;
+            background-color: var(--bg-color); /* Use variable */
+            color: var(--text-color); /* Use variable */
+            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
         }
 
-        /* --- Main Container --- */
         .landing-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            background-color: #000000;
-            color: #ffffff;
-            position: relative; 
-            text-align: center;
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+            width: 100%; height: 100%; position: relative; text-align: center;
         }
 
-        /* --- 3D Grid Background --- */
         .grid-background {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
+            /* Use variable for grid color */
+            background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px; transform-style: preserve-3d; transform: perspective(500px) rotateX(75deg);
+        }
+
+        /* NEW: Theme Toggle Button Styles */
+        .theme-toggle-btn {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 50%;
-            /* --- CHANGE HERE: Opacity increased from 0.2 to 0.4 --- */
-            background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
-            background-size: 40px 40px;
-            transform-style: preserve-3d;
-            transform: perspective(500px) rotateX(75deg);
+            top: 40px;
+            right: 40px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            z-index: 10;
         }
-
-        /* --- Content Wrapper --- */
-        .content {
-            position: relative; 
-            z-index: 1;
-            padding: 20px;
+        .theme-toggle-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--icon-stroke); /* Use variable */
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
+        /* Hide one icon based on theme */
+        .theme-toggle-btn .icon-sun { display: none; }
+        body.light-mode .theme-toggle-btn .icon-sun { display: block; }
+        body.light-mode .theme-toggle-btn .icon-moon { display: none; }
+        /* End Theme Toggle Styles */
 
-        /* --- Title Styling --- */
-        .title {
-            font-family: 'Anton', sans-serif;
-            font-size: clamp(4rem, 15vw, 10rem); 
-            font-weight: 400; 
-            margin: 0;
-            line-height: 1;
-            text-transform: uppercase; 
-        }
+        .content { position: relative; z-index: 1; padding: 20px; }
+        .title { font-family: 'Anton', sans-serif; font-size: clamp(4rem, 15vw, 10rem); font-weight: 400; margin: 0; line-height: 1; text-transform: uppercase; }
+        .subtitle { font-size: clamp(1rem, 4vw, 1.5rem); font-weight: 300; letter-spacing: 4px; margin-top: 10px; margin-bottom: 50px; text-transform: uppercase; }
+        .button-group { display: flex; gap: 20px; justify-content: center; }
 
-        /* --- Subtitle Styling --- */
-        .subtitle {
-            font-size: clamp(1rem, 4vw, 1.5rem);
-            font-weight: 300;
-            letter-spacing: 4px;
-            margin-top: 10px;
-            margin-bottom: 50px;
-            text-transform: uppercase;
-        }
-
-        /* --- Button Group --- */
-        .button-group {
-            display: flex;
-            gap: 20px; 
-            justify-content: center;
-        }
-
-        /* --- Button Styling --- */
         .cta-button {
             padding: 12px 35px;
-            border: 2px solid #ffffff;
-            border-radius: 50px; 
-            color: #ffffff;
+            border: 2px solid var(--border-color); /* Use variable */
+            border-radius: 50px;
+            color: var(--button-text-color); /* Use variable */
             background-color: transparent;
             text-decoration: none;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s ease, color 0.3s ease; 
+            font-weight: 600; font-size: 1rem; cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-
-        /* --- The Hover Effect --- */
         .cta-button:hover {
-            background-color: #ffffff; 
-            color: #000000;            
+            background-color: var(--button-hover-bg); /* Use variable */
+            color: var(--button-hover-text); /* Use variable */
         }
     </style>
 </head>
-<body>
+<!-- ID added for JS targeting -->
+<body id="theme-body">
 
     <div class="landing-container">
         <div class="grid-background"></div>
+
+        <!-- NEW: Theme Toggle Button -->
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme">
+             <!-- Moon Icon (Default for Dark Mode) -->
+             <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+             <!-- Sun Icon (Shown in Light Mode) -->
+             <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+        <!-- End Theme Toggle Button -->
 
         <div class="content">
             <h1 class="title">POPQUIZ</h1>
             <p class="subtitle">AI-POWERED LEARNING</p>
             <div class="button-group">
-                <a href="faculty-login.html" class="cta-button">FACULTY</a>
-                <a href="#" class="cta-button">STUDENTS</a>
+                <!-- Keeping original paths as requested -->
+                <a href="teacher/faculty-login.html" class="cta-button">FACULTY</a>
+                <a href="student/student-login.html" class="cta-button">STUDENTS</a>
             </div>
         </div>
     </div>
 
+    <!-- NEW: Theme Toggle JavaScript -->
+    <script>
+        const themeBody = document.getElementById('theme-body');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        // Check localStorage for saved theme, default to dark
+        const currentTheme = localStorage.getItem('popquiz-theme') || 'dark';
+
+        // Apply theme on initial load
+        if (currentTheme === 'light') {
+            themeBody.classList.add('light-mode');
+        }
+
+        // Add event listener to the toggle button
+        themeToggleBtn.addEventListener('click', () => {
+            // Toggle the .light-mode class on the body
+            themeBody.classList.toggle('light-mode');
+            
+            // Determine the new theme and save it to localStorage
+            const newTheme = themeBody.classList.contains('light-mode') ? 'light' : 'dark';
+            localStorage.setItem('popquiz-theme', newTheme);
+        });
+    </script>
+    <!-- End Theme Toggle JavaScript -->
+
 </body>
 </html>
+

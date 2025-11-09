@@ -26,6 +26,7 @@ security = HTTPBearer()
 class UserSignup(BaseModel):
     email: EmailStr
     password: str
+    role: Optional[str] = 'teacher'
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -62,9 +63,18 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'teacher',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # Ensure role column exists for older DBs
+    cursor.execute("PRAGMA table_info(users)")
+    cols = [row[1] for row in cursor.fetchall()]
+    if 'role' not in cols:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'teacher'")
+        except Exception:
+            pass
     
     # Sessions table
     cursor.execute('''
@@ -141,8 +151,8 @@ async def signup(user_data: UserSignup):
         # Create new user
         password_hash = hash_password(user_data.password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash) VALUES (?, ?)
-        ''', (user_data.email, password_hash))
+            INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)
+        ''', (user_data.email, password_hash, user_data.role or 'teacher'))
         
         conn.commit()
         return {"message": "User created successfully"}
@@ -159,7 +169,7 @@ async def login(user_data: UserLogin):
     
     try:
         # Verify user credentials
-        cursor.execute('SELECT id, password_hash FROM users WHERE email = ?', (user_data.email,))
+        cursor.execute('SELECT id, password_hash, role FROM users WHERE email = ?', (user_data.email,))
         user = cursor.fetchone()
         
         if not user or not verify_password(user_data.password, user[1]):
@@ -181,6 +191,48 @@ async def login(user_data: UserLogin):
             "expires_at": expires_at.isoformat()
         }
     
+    finally:
+        conn.close()
+
+
+@app.post('/student/signup')
+async def student_signup(user_data: UserSignup):
+    """Create a student user. Role is forced to 'student'."""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT id FROM users WHERE email = ?', (user_data.email,))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail='Email already registered')
+        password_hash = hash_password(user_data.password)
+        cursor.execute('''
+            INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)
+        ''', (user_data.email, password_hash, 'student'))
+        conn.commit()
+        return { 'message': 'Student account created successfully' }
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail='Email already registered')
+    finally:
+        conn.close()
+
+
+@app.post('/student/login')
+async def student_login(user_data: UserLogin):
+    """Login for student users only."""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT id, password_hash, role FROM users WHERE email = ?', (user_data.email,))
+        user = cursor.fetchone()
+        if not user or not verify_password(user_data.password, user[1]):
+            raise HTTPException(status_code=401, detail='Invalid email or password')
+        if user[2] != 'student':
+            raise HTTPException(status_code=403, detail='User is not a student')
+        token = create_session_token()
+        expires_at = datetime.now() + timedelta(days=7)
+        cursor.execute('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', (token, user[0], expires_at))
+        conn.commit()
+        return { 'message': 'Login successful', 'token': token, 'expires_at': expires_at.isoformat() }
     finally:
         conn.close()
 
@@ -225,21 +277,19 @@ async def _generate_questions_internal(request: GenerateRequest):
     bloom_desc = bloom_descriptions.get(bloom_level, "demonstrate understanding of")
     
     if question_type == "MCQ":
-        prompt = f"""Generate {num} multiple-choice questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}). 
+        prompt = f"""Generate {num} multiple-choice questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
 
 Each question should:
 - Be appropriate for B.Tech level students
 - Have 4 options (A, B, C, D)
-- Have only one correct answer
-- Include the correct answer at the end
+- NOT include the correct answer or any answer hints — only provide the question and its options
 
 Format each question as:
 Q1. [Question text]
 A) [Option A]
-B) [Option B] 
+B) [Option B]
 C) [Option C]
 D) [Option D]
-Correct Answer: [Letter]
 
 Generate exactly {num} questions in this format."""
 
@@ -247,13 +297,12 @@ Generate exactly {num} questions in this format."""
         prompt = f"""Generate {num} true/false questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
 
 Each question should:
-- Be appropriate for B.Tech level students  
+- Be appropriate for B.Tech level students
 - Be clearly answerable as True or False
-- Include the correct answer
+- NOT include the correct answer or any answer hints — only provide the statement
 
 Format each question as:
 Q1. [Statement]
-Answer: True/False
 
 Generate exactly {num} questions in this format."""
 
@@ -264,6 +313,7 @@ Each question should:
 - Be appropriate for B.Tech level students
 - Require a 2-3 sentence answer
 - Be specific and focused
+- NOT include answers or model responses — only provide the question text
 
 Format each question as:
 Q1. [Question text]
@@ -282,34 +332,46 @@ Generate exactly {num} questions in this format."""
         data = response.json()
         generated_text = data.get("response", "")
         
-        # Parse questions based on type
+        # Parse questions based on type (LLM no longer provides answers)
         questions = []
-        if question_type == "MCQ":
-            # Parse MCQ format
-            current_question = ""
-            lines = generated_text.strip().split('\n')
+        lines = generated_text.strip().split('\n')
+        # normalize and trim
+        lines = [l.rstrip() for l in lines]
+
+        if question_type == 'MCQ':
+            current_question = None
             for line in lines:
-                line = line.strip()
-                if line.startswith('Q') and line[1:2].isdigit():
+                s = line.strip()
+                if not s: 
+                    continue
+                # Start of a new question like 'Q1.' or 'Q1)'
+                if s.lower().startswith('q') and len(s) > 1 and s[1].isdigit():
+                    # push previous
                     if current_question:
                         questions.append(current_question.strip())
-                    current_question = line
-                elif line and current_question:
-                    current_question += '\n' + line
-                    if line.startswith('Correct Answer:'):
-                        questions.append(current_question.strip())
-                        current_question = ""
+                    current_question = s
+                else:
+                    # append options or continuation lines
+                    if current_question is None:
+                        # sometimes generators omit Q numbering; start new
+                        current_question = s
+                    else:
+                        current_question += '\n' + s
+            if current_question:
+                questions.append(current_question.strip())
         else:
-            # Parse Short Answer and True/False format
-            lines = generated_text.strip().split('\n')
+            # Short Answer and True/False: each 'Qn.' line is a question
             for line in lines:
-                line = line.strip()
-                if line.startswith('Q') and line[1:2].isdigit():
-                    # Remove the Q1., Q2., etc. prefix
-                    parts = line.split('.', 1)
+                s = line.strip()
+                if not s: continue
+                if s.lower().startswith('q') and len(s) > 1 and s[1].isdigit():
+                    parts = s.split('.', 1)
                     if len(parts) > 1:
-                        question = parts[1].strip()
-                        questions.append(question)
+                        questions.append(parts[1].strip())
+                else:
+                    # fallback: treat any non-empty line as a question if none collected
+                    if not questions:
+                        questions.append(s)
         
         # If parsing failed, fallback to simple line splitting
         if not questions:
@@ -350,16 +412,16 @@ def generate_fallback_questions(topic: str, question_type: str, bloom_level: str
             f"What future developments do you expect in {topic}?"
         ],
         "MCQ": [
-            f"Q1. Which of the following best describes {topic}?\nA) Option A related to {topic}\nB) Option B related to {topic}\nC) Option C related to {topic}\nD) Option D related to {topic}\nCorrect Answer: A",
-            f"Q2. What is a key feature of {topic}?\nA) Feature A\nB) Feature B\nC) Feature C\nD) Feature D\nCorrect Answer: B",
-            f"Q3. In the context of {topic}, which statement is most accurate?\nA) Statement A\nB) Statement B\nC) Statement C\nD) Statement D\nCorrect Answer: C"
+            f"Q1. Which of the following best describes {topic}?\nA) Option A related to {topic}\nB) Option B related to {topic}\nC) Option C related to {topic}\nD) Option D related to {topic}",
+            f"Q2. What is a key feature of {topic}?\nA) Feature A\nB) Feature B\nC) Feature C\nD) Feature D",
+            f"Q3. In the context of {topic}, which statement is most accurate?\nA) Statement A\nB) Statement B\nC) Statement C\nD) Statement D"
         ],
         "True/False": [
-            f"Q1. {topic} is essential for modern computer systems.\nAnswer: True",
-            f"Q2. {topic} has no impact on system performance.\nAnswer: False",
-            f"Q3. Understanding {topic} is important for B.Tech students.\nAnswer: True",
-            f"Q4. {topic} concepts are only theoretical and have no practical applications.\nAnswer: False",
-            f"Q5. {topic} has remained unchanged since its inception.\nAnswer: False"
+            f"Q1. {topic} is essential for modern computer systems.",
+            f"Q2. {topic} has no impact on system performance.",
+            f"Q3. Understanding {topic} is important for B.Tech students.",
+            f"Q4. {topic} concepts are only theoretical and have no practical applications.",
+            f"Q5. {topic} has remained unchanged since its inception."
         ]
     }
     
@@ -430,6 +492,40 @@ async def get_user_quizzes(current_user: dict = Depends(get_current_user)):
     conn.close()
     return {"quizzes": quizzes}
 
+
+@app.get("/quizzes/assigned")
+async def get_assigned_quizzes(current_user: dict = Depends(get_current_user)):
+    """Return all quizzes in the system (assigned by teachers).
+    Students will use this to see available quizzes. This endpoint returns
+    basic metadata about each quiz and the creator's email.
+    """
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT q.id, q.name, q.topic, q.bloom_level, q.question_type, q.created_at, q.updated_at, u.email
+        FROM quizzes q
+        JOIN users u ON q.user_id = u.id
+        ORDER BY q.updated_at DESC
+    ''')
+
+    quizzes = []
+    for row in cursor.fetchall():
+        quiz = {
+            "id": row[0],
+            "name": row[1],
+            "topic": row[2],
+            "bloom_level": row[3],
+            "question_type": row[4],
+            "created_at": row[5],
+            "updated_at": row[6],
+            "creator_email": row[7]
+        }
+        quizzes.append(quiz)
+
+    conn.close()
+    return {"quizzes": quizzes}
+
 @app.get("/quizzes/{quiz_id}")
 async def get_quiz(quiz_id: int, current_user: dict = Depends(get_current_user)):
     conn = sqlite3.connect('popquiz.db')
@@ -458,6 +554,40 @@ async def get_quiz(quiz_id: int, current_user: dict = Depends(get_current_user))
         "updated_at": row[7]
     }
     
+    return quiz
+
+
+@app.get("/quizzes/public/{quiz_id}")
+async def get_public_quiz(quiz_id: int, credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    """Public view of a quiz by id. Allows students to retrieve quizzes created by teachers.
+    If a token is provided it is ignored for ownership checks; this endpoint is intended for read-only access.
+    """
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, name, topic, bloom_level, question_type, questions, created_at, updated_at
+        FROM quizzes
+        WHERE id = ?
+    ''', (quiz_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    quiz = {
+        "id": row[0],
+        "name": row[1],
+        "topic": row[2],
+        "bloom_level": row[3],
+        "question_type": row[4],
+        "questions": json.loads(row[5]),
+        "created_at": row[6],
+        "updated_at": row[7]
+    }
+
     return quiz
 
 @app.put("/quizzes/{quiz_id}")

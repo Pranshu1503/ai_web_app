@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Quiz - PopQuiz</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@300;400;600&display=swap');
+
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Poppins', sans-serif; overflow-y: auto; }
+        .quiz-container { display: flex; justify-content: center; align-items: center; flex-direction: column; min-height: 100vh; background-color: #000; color: #fff; position: relative; text-align: center; padding: 150px 20px 50px 20px; box-sizing: border-box; }
+        .grid-background { position: fixed; bottom: 0; left: 0; width: 100%; height: 50%; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px); background-size: 40px 40px; transform-style: preserve-3d; transform: perspective(500px) rotateX(75deg); z-index: 0; }
+        .header { position: absolute; top: 40px; left: 40px; right: 40px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+        .logo { font-family: 'Anton', sans-serif; font-size: 1.8rem; font-weight: 400; letter-spacing: 1px; }
+        .header-nav { display: flex; align-items: center; gap: 20px; }
+        .nav-btn { color: #fff; text-decoration: none; font-weight: 600; border: 2px solid #fff; padding: 8px 15px; border-radius: 50px; transition: all 0.3s ease; font-size: 0.9rem; }
+        .nav-btn:hover { background-color: #fff; color: #000; }
+
+        .content-wrapper { position: relative; z-index: 1; width: 100%; max-width: 700px; text-align: left; background-color: #111; padding: 40px; border-radius: 25px; border: 2px solid #555; }
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .quiz-title { font-size: 1.5rem; font-weight: 600; margin: 0; }
+        .progress-indicator { font-size: 1rem; color: #aaa; font-weight: 600; }
+        .question-area { margin-bottom: 30px; }
+        .question-text { font-size: 1.2rem; line-height: 1.6; margin-bottom: 25px; }
+        .answer-options label { display: block; background-color: #222; border: 2px solid #444; border-radius: 15px; padding: 15px 20px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; }
+        .answer-options label:hover { border-color: #fff; }
+        .answer-options input[type="radio"] { margin-right: 10px; accent-color: #fff; }
+        .answer-options input[type="radio"]:checked + span { font-weight: 600; }
+        .answer-textarea { width: 100%; background-color: #222; color: #fff; border: 1px solid #555; border-radius: 10px; padding: 15px; font-family: 'Poppins', sans-serif; font-size: 1rem; resize: vertical; min-height: 100px; box-sizing: border-box; }
+        .answer-textarea:focus { outline: none; border-color: #fff; }
+        .navigation-buttons { display: flex; justify-content: flex-end; }
+        .nav-button { padding: 12px 35px; border: 2px solid #fff; border-radius: 50px; color: #000; background-color: #fff; text-decoration: none; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; }
+        .nav-button:hover { background-color: transparent; color: #fff; }
+        .nav-button:disabled { background-color: #555; border-color: #555; color: #999; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="grid-background"></div>
+
+        <header class="header">
+            <div class="logo">POPQUIZ</div>
+            <div class="header-nav">
+                <!-- Dashboard link uses the confirmed filename -->
+                <a href="student-dashboard.html" class="nav-btn">Dashboard</a> 
+                <a href="../index.html" class="nav-btn">Logout</a>
+            </div>
+        </header>
+
+        <div class="content-wrapper">
+            <div class="quiz-header">
+                <h1 id="quiz-title" class="quiz-title">OS Midterm Prep</h1>
+                <div id="progress" class="progress-indicator">Question 1 of 3</div>
+            </div>
+
+            <div class="question-area">
+                <p id="question-text" class="question-text">Placeholder question text will appear here.</p>
+                <div id="answer-input-area">
+                    <!-- Answer inputs will be dynamically generated here -->
+                </div>
+            </div>
+
+            <div class="navigation-buttons">
+                <button id="next-btn" class="nav-button">Next Question</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const quizTitleEl = document.getElementById('quiz-title');
+            const progressEl = document.getElementById('progress');
+            const questionTextEl = document.getElementById('question-text');
+            const answerAreaEl = document.getElementById('answer-input-area');
+            const nextBtn = document.getElementById('next-btn');
+
+            // Read quiz id from URL
+            const params = new URLSearchParams(window.location.search);
+            const quizId = params.get('id');
+            const token = localStorage.getItem('popquiz_token');
+            if(!token){ alert('Please login as student'); window.location.href='student-login.html'; return; }
+            if(!quizId){ alert('Missing quiz id'); window.location.href='student-dashboard.html'; return; }
+
+            let quizData = { title: 'Quiz', questions: [] };
+            let currentQuestionIndex = 0;
+            let studentAnswers = [];
+
+            function parseMCQQuestion(raw){
+                // raw may contain lines: Q1. question text\nA) optA\nB) optB ...
+                // split into lines and clean each line to remove answer hints
+                const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean).map(cleanQuestionText);
+                let qtext = lines[0] || raw;
+                // remove leading Qn. if present
+                qtext = qtext.replace(/^Q\d+\.?\s*/i, '');
+                const options = [];
+                for(const line of lines.slice(1)){
+                    const m = line.match(/^[A-D][\)\.\-]?\s*(.*)$/i);
+                    if(m) options.push(m[1].trim());
+                }
+                // Fallback: try lines that start with A) or similar anywhere
+                if(options.length === 0){
+                    for(const line of lines){
+                        const m = line.match(/^[A-D][\)\.\-]?\s*(.*)$/i);
+                        if(m) options.push(m[1].trim());
+                    }
+                }
+                return { text: qtext, options };
+            }
+
+            // Remove embedded answers or "Correct Answer" lines from question text
+            function cleanQuestionText(raw){
+                if(!raw) return raw;
+                // remove trailing 'Answer: ...' or 'Correct Answer: ...' anywhere in the line
+                let s = raw.replace(/\b(Correct Answer|Correct|Answer)\s*[:\-–]?\s*([A-Za-z0-9\)\.\- ]+)$/i, '').trim();
+                // also remove parenthetical answers like '(Answer: True)'
+                s = s.replace(/\(\s*(Correct Answer|Answer)\s*[:\-–]?[^)]+\)/i, '').trim();
+                // remove trailing 'Answer True' style
+                s = s.replace(/\bAnswer\s+(True|False)\b\.?/i, '').trim();
+                return s;
+            }
+
+            function loadQuestion(index){
+                const q = quizData.questions[index];
+                questionTextEl.textContent = q.text || 'Question text missing';
+                answerAreaEl.innerHTML = '';
+                progressEl.textContent = `Question ${index+1} of ${quizData.questions.length}`;
+
+                if(q.type === 'Short Answer'){
+                    const ta = document.createElement('textarea');
+                    ta.className = 'answer-textarea';
+                    ta.placeholder = 'Enter your answer here...';
+                    ta.value = studentAnswers[index] || '';
+                    answerAreaEl.appendChild(ta);
+                } else if(q.type === 'MCQ'){
+                    const div = document.createElement('div'); div.className='answer-options';
+                    (q.options || []).forEach(opt => {
+                        const label = document.createElement('label');
+                        const radio = document.createElement('input');
+                        radio.type='radio'; radio.name = `q${index}`; radio.value = opt;
+                        if(studentAnswers[index] === opt) radio.checked = true;
+                        const span = document.createElement('span'); span.textContent = ' ' + opt;
+                        label.appendChild(radio); label.appendChild(span);
+                        div.appendChild(label);
+                    });
+                    answerAreaEl.appendChild(div);
+                } else if(q.type === 'True/False'){
+                    const div = document.createElement('div'); div.className='answer-options';
+                    ['True','False'].forEach(opt => {
+                        const label = document.createElement('label');
+                        const radio = document.createElement('input');
+                        radio.type='radio'; radio.name = `q${index}`; radio.value = opt;
+                        if(studentAnswers[index] === opt) radio.checked = true;
+                        const span = document.createElement('span'); span.textContent = ' ' + opt;
+                        label.appendChild(radio); label.appendChild(span);
+                        div.appendChild(label);
+                    });
+                    answerAreaEl.appendChild(div);
+                } else {
+                    // Generic: show textarea
+                    const ta = document.createElement('textarea');
+                    ta.className = 'answer-textarea'; ta.placeholder='Enter your answer here...';
+                    ta.value = studentAnswers[index] || '';
+                    answerAreaEl.appendChild(ta);
+                }
+
+                nextBtn.textContent = (index === quizData.questions.length-1) ? 'Submit Quiz' : 'Next Question';
+            }
+
+            function saveAnswer(){
+                const q = quizData.questions[currentQuestionIndex];
+                if(q.type === 'Short Answer'){
+                    const ta = answerAreaEl.querySelector('.answer-textarea');
+                    studentAnswers[currentQuestionIndex] = ta ? ta.value : '';
+                } else if(q.type === 'MCQ' || q.type === 'True/False'){
+                    const sel = answerAreaEl.querySelector(`input[name="q${currentQuestionIndex}"]:checked`);
+                    studentAnswers[currentQuestionIndex] = sel ? sel.value : undefined;
+                } else {
+                    const ta = answerAreaEl.querySelector('.answer-textarea');
+                    studentAnswers[currentQuestionIndex] = ta ? ta.value : '';
+                }
+            }
+
+            nextBtn.addEventListener('click', ()=>{
+                saveAnswer();
+                if(currentQuestionIndex < quizData.questions.length-1){
+                    currentQuestionIndex++; loadQuestion(currentQuestionIndex);
+                } else {
+                    console.log('Quiz submitted', { quizId, answers: studentAnswers });
+                    alert('Quiz submitted! (answers logged to console)');
+                    window.location.href = 'student-dashboard.html';
+                }
+            });
+
+            // Fetch quiz from backend
+            (async function fetchQuiz(){
+                try{
+                    // use the public quiz endpoint so students can load teacher-created quizzes
+                    const res = await fetch(`http://localhost:8000/quizzes/public/${quizId}`, { headers: { 'Authorization': 'Bearer '+token } });
+                    if(!res.ok){
+                        const err = await res.json().catch(()=>({detail:'Failed to load'}));
+                        alert(err.detail || 'Failed to load quiz');
+                        window.location.href='student-dashboard.html';
+                        return;
+                    }
+                    const q = await res.json();
+                    // q has: id,name,topic,bloom_level,question_type,questions
+                    quizData.title = q.name || q.topic || 'Quiz';
+                    quizTitleEl.textContent = quizData.title;
+                    const qtype = q.question_type || 'Short Answer';
+                    // build questions array
+                    quizData.questions = (q.questions || []).map(raw => {
+                        if(qtype === 'MCQ'){
+                            const parsed = parseMCQQuestion(raw);
+                            return { type: 'MCQ', text: parsed.text, options: parsed.options.length? parsed.options : ['Option A','Option B','Option C','Option D'] };
+                        } else if(qtype === 'True/False'){
+                            // raw may include 'Q1. statement' or just statement
+                            const text = (''+raw).replace(/^Q\d+\.?\s*/i,'');
+                            return { type: 'True/False', text };
+                        } else {
+                            const text = (''+raw).replace(/^Q\d+\.?\s*/i,'');
+                            return { type: 'Short Answer', text };
+                        }
+                    });
+                    studentAnswers = new Array(quizData.questions.length);
+                    // initial load
+                    loadQuestion(0);
+                }catch(err){
+                    console.error(err);
+                    alert('Network error while loading quiz');
+                    window.location.href='student-dashboard.html';
+                }
+            })();
+        });
+    </script>
+</body>
+</html>
+
