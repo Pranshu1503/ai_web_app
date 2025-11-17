@@ -166,7 +166,11 @@
         
         .performance-chart { padding: 20px; border: 2px solid #333; border-radius: 20px; }
         .chart-bars { display: flex; justify-content: space-around; align-items: flex-end; height: 100px; }
-        .chart-bar { width: 20%; background-color: #555; position: relative; }
+    .chart-bar { width: 20%; background-color: #555; position: relative; }
+    /* make the anchor surrounding each bar fill available column space */
+    .chart-bars .perf-link { flex: 1; display: flex; justify-content: center; align-items: flex-end; text-decoration: none; color: inherit; }
+    .chart-bars .perf-link .chart-bar { width: 60%; }
+    .chart-labels a { color: inherit; text-decoration: none; display: block; width: 33%; text-align: center; }
         .chart-bar span { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 600; }
         .chart-labels { display: flex; justify-content: space-around; color: #aaa; font-size: 0.8rem; margin-top: 10px; }
 
@@ -216,14 +220,14 @@
                     <h2 class="section-title">Performance by Topic</h2>
                     <div class="performance-chart">
                         <div class="chart-bars">
-                            <div class="chart-bar" style="height: 90%;"><span>90%</span></div>
-                            <div class="chart-bar" style="height: 60%;"><span>60%</span></div>
-                            <div class="chart-bar" style="height: 80%;"><span>80%</span></div>
+                            <a class="perf-link" href="student-analysis.html?topic=Scheduling" title="View detailed analysis for Scheduling"><div class="chart-bar" style="height: 90%;"><span>90%</span></div></a>
+                            <a class="perf-link" href="student-analysis.html?topic=Memory" title="View detailed analysis for Memory"><div class="chart-bar" style="height: 60%;"><span>60%</span></div></a>
+                            <a class="perf-link" href="student-analysis.html?topic=Deadlocks" title="View detailed analysis for Deadlocks"><div class="chart-bar" style="height: 80%;"><span>80%</span></div></a>
                         </div>
                         <div class="chart-labels">
-                            <div>Scheduling</div>
-                            <div>Memory</div>
-                            <div>Deadlocks</div>
+                            <a class="perf-link" href="student-analysis.html?topic=Scheduling">Scheduling</a>
+                            <a class="perf-link" href="student-analysis.html?topic=Memory">Memory</a>
+                            <a class="perf-link" href="student-analysis.html?topic=Deadlocks">Deadlocks</a>
                         </div>
                     </div>
                 </div>
