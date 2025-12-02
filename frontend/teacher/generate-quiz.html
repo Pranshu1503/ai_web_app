@@ -57,6 +57,13 @@
     /* spinner inside button */
     .btn-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; margin-right: 10px; vertical-align: middle; animation: spin 0.8s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    
+    .file-input { display: none; }
+    .file-upload-btn { width: 100%; padding: 14px 25px; background-color: transparent; border: 2px solid var(--border-color); border-radius: 50px; color: var(--text-color); font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; }
+    .file-upload-btn:hover { background-color: var(--border-color); color: var(--bg-color); }
+    .file-upload-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; }
+    .file-name { margin-top: 8px; font-size: 0.85rem; color: var(--accent-color); text-align: center; }
+    .remove-file { color: #ef4444; cursor: pointer; text-decoration: underline; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -91,9 +98,25 @@
             <h1>GENERATE NEW QUIZ</h1>
             <form id="quiz-generator-form">
                 <div class="input-group"><label for="topic">TOPIC OR SUBJECT</label><input type="text" id="topic" class="input-field" required placeholder="e.g., Process Scheduling, Deadlocks"></div>
+                
                 <div class="input-group"><label for="bloom-level">COGNITIVE LEVEL (BLOOM'S)</label><select id="bloom-level" name="bloom-level" class="input-field" required><option value="" disabled selected>Select a cognitive level...</option><option value="Remembering">Remembering (Define, List)</option><option value="Understanding">Understanding (Explain, Summarize)</option><option value="Applying">Applying (Calculate, Solve)</option><option value="Analyzing">Analyzing (Compare, Contrast)</option><option value="Evaluating">Evaluating (Critique, Justify)</option><option value="Creating">Creating (Design, Propose)</option></select></div>
                 <div class="input-group"><label for="question-type">QUESTION TYPE</label><div class="question-type-group"><button type="button" class="type-btn active" data-value="Short Answer">Short Answer</button><button type="button" class="type-btn" data-value="MCQ">MCQ</button><button type="button" class="type-btn" data-value="True/False">True/False</button></div><input type="hidden" id="question-type" name="question-type" value="Short Answer"></div>
                 <div class="input-group"><label for="num-questions">NUMBER OF QUESTIONS</label><input type="number" id="num-questions" class="input-field" required min="1" placeholder="e.g., 5"></div>
+                
+                <div class="input-group">
+                    <label for="course-handout">COURSE HANDOUT (OPTIONAL)</label>
+                    <input type="file" id="course-handout" class="file-input" accept=".pdf,.txt,.doc,.docx">
+                    <div class="file-upload-btn" onclick="document.getElementById('course-handout').click()">
+                        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span id="upload-text">Import Course Handout</span>
+                    </div>
+                    <div id="file-name" class="file-name"></div>
+                </div>
+                
                 <button type="submit" class="generate-button">GENERATE QUESTIONS</button>
             </form>
         </div>
@@ -110,6 +133,28 @@
             const theme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
             localStorage.setItem('popquiz-theme', theme);
         });
+
+        // File upload handling
+        const fileInput = document.getElementById('course-handout');
+        const fileNameDisplay = document.getElementById('file-name');
+        const uploadText = document.getElementById('upload-text');
+        let uploadedFile = null;
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadedFile = file;
+                fileNameDisplay.innerHTML = `${file.name} <span class="remove-file" onclick="removeFile()">Remove</span>`;
+                uploadText.textContent = 'File Selected';
+            }
+        });
+
+        function removeFile() {
+            fileInput.value = '';
+            uploadedFile = null;
+            fileNameDisplay.innerHTML = '';
+            uploadText.textContent = 'Import Course Handout';
+        }
 
         // Form functionality
         const typeButtons = document.querySelectorAll('.type-btn');
@@ -144,11 +189,20 @@
             generateButton.offsetHeight;
             await new Promise(res => setTimeout(res, 120));
 
+            // Prepare form data with optional file upload
+            const formData = new FormData();
+            formData.append('topic', topic);
+            formData.append('bloom_level', bloom_level);
+            formData.append('question_type', question_type);
+            formData.append('num_questions', num_questions);
+            if (uploadedFile) {
+                formData.append('handout', uploadedFile);
+            }
+
             // Use test endpoint (no auth) for local development
             fetch('http://localhost:8000/test/generate_questions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic, bloom_level, question_type, num_questions })
+                body: formData
             }).then(r => r.json().then(data => ({ok: r.ok, body: data})))
             .then(result => {
                 if (!result.ok) {

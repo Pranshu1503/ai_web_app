@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 import requests
@@ -13,6 +13,7 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+import io
 
 app = FastAPI(title="PopQuiz AI Backend", description="AI-Powered Quiz Generation System")
 
@@ -687,17 +688,50 @@ async def logout(current_user: dict = Depends(get_current_user),
 async def generate_questions(request: GenerateRequest, current_user: dict = Depends(get_current_user)):
     return await _generate_questions_internal(request)
 
-# Test endpoint without authentication
+# Test endpoint without authentication - with file upload support
 @app.post("/test/generate_questions")
-async def test_generate_questions(request: GenerateRequest):
-    """Test endpoint for generating questions without authentication"""
-    return await _generate_questions_internal(request)
+async def test_generate_questions(
+    topic: str = Form(...),
+    bloom_level: str = Form(...),
+    question_type: str = Form(...),
+    num_questions: int = Form(...),
+    handout: Optional[UploadFile] = File(None)
+):
+    """Test endpoint for generating questions without authentication, supports optional file upload"""
+    handout_content = None
+    
+    if handout:
+        try:
+            # Read file content
+            content = await handout.read()
+            
+            # Extract text based on file type
+            if handout.filename.endswith('.txt'):
+                handout_content = content.decode('utf-8')
+            elif handout.filename.endswith('.pdf'):
+                try:
+                    import PyPDF2
+                    pdf_file = io.BytesIO(content)
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    handout_content = ""
+                    for page in pdf_reader.pages:
+                        handout_content += page.extract_text()
+                except ImportError:
+                    print("PyPDF2 not installed, skipping PDF extraction")
+                except Exception as e:
+                    print(f"Error extracting PDF: {e}")
+            
+            # Limit content length to avoid token overflow
+            if handout_content and len(handout_content) > 5000:
+                handout_content = handout_content[:5000] + "..."
+                
+        except Exception as e:
+            print(f"Error processing handout: {e}")
+    
+    return await _generate_questions_internal(topic, bloom_level, question_type, num_questions, handout_content)
 
-async def _generate_questions_internal(request: GenerateRequest):
-    topic = request.topic
-    bloom_level = request.bloom_level
-    question_type = request.question_type
-    num = request.num_questions
+async def _generate_questions_internal(topic: str, bloom_level: str, question_type: str, num: int, handout_content: Optional[str] = None):
+    """Internal function to generate questions with optional handout context"""
     
     # Create detailed prompt based on the parameters
     bloom_descriptions = {
@@ -711,8 +745,19 @@ async def _generate_questions_internal(request: GenerateRequest):
     
     bloom_desc = bloom_descriptions.get(bloom_level, "demonstrate understanding of")
     
+    # Add handout context if provided
+    context_prefix = ""
+    if handout_content:
+        context_prefix = f"""Based on the following course material:
+
+---
+{handout_content}
+---
+
+"""
+    
     if question_type == "MCQ":
-        prompt = f"""Generate {num} multiple-choice questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
+        prompt = f"""{context_prefix}Generate {num} multiple-choice questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
 
 Each question should:
 - Be appropriate for B.Tech level students
@@ -729,7 +774,7 @@ D) [Option D]
 Generate exactly {num} questions in this format."""
 
     elif question_type == "True/False":
-        prompt = f"""Generate {num} true/false questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
+        prompt = f"""{context_prefix}Generate {num} true/false questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
 
 Each question should:
 - Be appropriate for B.Tech level students
@@ -742,7 +787,7 @@ Q1. [Statement]
 Generate exactly {num} questions in this format."""
 
     else:  # Short Answer
-        prompt = f"""Generate {num} short-answer questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
+        prompt = f"""{context_prefix}Generate {num} short-answer questions on the topic '{topic}' at the {bloom_level} cognitive level (students should {bloom_desc}).
 
 Each question should:
 - Be appropriate for B.Tech level students

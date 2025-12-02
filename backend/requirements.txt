@@ -5,3 +5,4 @@ pydantic[email]
 python-multipart
 aiosmtplib
 email-validator
+PyPDF2
