@@ -140,7 +140,7 @@
             // Read quiz id from URL
             const params = new URLSearchParams(window.location.search);
             const quizId = params.get('id');
-            const token = localStorage.getItem('popquiz_token');
+            const token = localStorage.getItem('popquiz_student_token');
             if(!token){ alert('Please login as student'); window.location.href='student-login.html'; return; }
             if(!quizId){ alert('Missing quiz id'); window.location.href='student-dashboard.html'; return; }
 
@@ -243,14 +243,43 @@
                 }
             }
 
-            nextBtn.addEventListener('click', ()=>{
+            nextBtn.addEventListener('click', async ()=>{
                 saveAnswer();
                 if(currentQuestionIndex < quizData.questions.length-1){
                     currentQuestionIndex++; loadQuestion(currentQuestionIndex);
                 } else {
-                    console.log('Quiz submitted', { quizId, answers: studentAnswers });
-                    alert('Quiz submitted! (answers logged to console)');
-                    window.location.href = 'student-dashboard.html';
+                    // Submit quiz to backend
+                    try {
+                        // Convert answers array to object with question_index keys
+                        const answersObj = {};
+                        studentAnswers.forEach((answer, idx) => {
+                            answersObj[`question_${idx}`] = answer || '';
+                        });
+                        
+                        const submitRes = await fetch('http://localhost:8000/student/submit-quiz', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify({
+                                quiz_id: parseInt(quizId),
+                                answers: answersObj,
+                                score: null
+                            })
+                        });
+                        
+                        if (!submitRes.ok) {
+                            const err = await submitRes.json().catch(() => ({detail: 'Submission failed'}));
+                            throw new Error(err.detail || 'Failed to submit quiz');
+                        }
+                        
+                        alert('Quiz submitted successfully!');
+                        window.location.href = 'student-dashboard.html';
+                    } catch (error) {
+                        console.error('Submission error:', error);
+                        alert('Error submitting quiz: ' + error.message);
+                    }
                 }
             });
 

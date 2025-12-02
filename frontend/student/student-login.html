@@ -134,7 +134,7 @@
                     return;
                 }
                 const token = result.body.token;
-                localStorage.setItem('popquiz_token', token);
+                localStorage.setItem('popquiz_student_token', token);
                 alert('Authentication successful! Redirecting to your dashboard...');
                 window.location.href = 'student-dashboard.html';
             }).catch(err => { console.error(err); alert('Unable to reach backend. Make sure the backend is running at http://localhost:8000'); });

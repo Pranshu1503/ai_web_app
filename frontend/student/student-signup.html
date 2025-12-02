@@ -79,6 +79,10 @@
             <h1>SIGN UP</h1>
             <form id="signup-form-element">
                 <div class="input-group">
+                    <label for="name">NAME</label>
+                    <input type="text" id="name" class="input-field" required>
+                </div>
+                <div class="input-group">
                     <label for="email">EMAIL</label>
                     <input type="email" id="email" class="input-field" required>
                 </div>
@@ -109,6 +113,7 @@
         const signupForm = document.getElementById('signup-form-element');
         signupForm.addEventListener('submit', function(event) {
             event.preventDefault();
+            const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
@@ -118,7 +123,7 @@
             fetch('http://localhost:8000/student/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ name, email, password })
             }).then(r => r.json().then(data => ({ok: r.ok, body: data})))
             .then(result => {
                 if (!result.ok) { 

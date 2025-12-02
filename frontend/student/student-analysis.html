@@ -286,7 +286,7 @@
     <script>
         // Load completed quizzes for this student and compute analysis
         (async function loadAnalysis(){
-            const token = localStorage.getItem('popquiz_token');
+            const token = localStorage.getItem('popquiz_student_token');
             if(!token){
                 console.warn('No token; redirecting to login');
                 window.location.href = 'student-login.html';
