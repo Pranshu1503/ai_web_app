@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Responses - PopQuiz</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@300;400;600&display=swap');
+        :root {
+            --bg-color: #000;
+            --text-color: #fff;
+            --grid-color: rgba(255, 255, 255, 0.4);
+            --border-color: #fff;
+            --text-muted: #ccc;
+            --accent-color: #3498db;
+            --hover-bg: rgba(255,255,255,0.1);
+            --card-bg: rgba(255,255,255,0.05);
+            --success-color: #4CAF50;
+            --warning-color: #ff9800;
+        }
+        body.light-mode {
+            --bg-color: #f4f7f9;
+            --text-color: #111827;
+            --grid-color: rgba(0, 0, 0, 0.1);
+            --border-color: #111827;
+            --text-muted: #6b7280;
+            --accent-color: #2980b9;
+            --hover-bg: rgba(0,0,0,0.05);
+            --card-bg: rgba(0,0,0,0.02);
+            --success-color: #4CAF50;
+            --warning-color: #ff9800;
+        }
+        body, html { margin: 0; padding: 0; width: 100%; min-height: 100%; font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s ease, color 0.3s ease; }
+        .container { display: flex; flex-direction: column; min-height: 100vh; padding: 150px 20px 50px 20px; box-sizing: border-box; position: relative; }
+        .grid-background { position: fixed; bottom: 0; left: 0; width: 100%; height: 50%; background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px); background-size: 40px 40px; transform-style: preserve-3d; transform: perspective(500px) rotateX(75deg); z-index: 0; }
+        .header { position: fixed; top: 40px; left: 40px; right: 40px; display: flex; justify-content: space-between; align-items: center; z-index: 2; background-color: var(--bg-color); padding-bottom: 10px; }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .logo { font-family: 'Anton', sans-serif; font-size: 1.8rem; font-weight: 400; letter-spacing: 1px; }
+        .back-arrow { font-size: 2rem; color: var(--text-color); text-decoration: none; margin-left: 15px; }
+        .theme-toggle-btn { background: none; border: none; cursor: pointer; padding: 5px; }
+        .theme-toggle-btn svg { width: 24px; height: 24px; stroke: var(--text-color); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+        .theme-toggle-btn .icon-sun { display: none; }
+        body.light-mode .theme-toggle-btn .icon-sun { display: block; }
+        body.light-mode .theme-toggle-btn .icon-moon { display: none; }
+        .content { position: relative; z-index: 1; max-width: 1200px; width: 100%; margin: 0 auto; }
+        .page-title { font-size: 2.5rem; font-weight: 300; letter-spacing: 4px; margin: 0 0 40px 0; text-align: center; }
+        .filters { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+        .filter-input { flex: 1; min-width: 200px; padding: 12px 20px; background-color: transparent; border: 2px solid var(--border-color); border-radius: 50px; color: var(--text-color); font-size: 1rem; font-family: 'Poppins', sans-serif; }
+        .filter-input:focus { outline: none; border-color: var(--accent-color); }
+        .submissions-list { display: flex; flex-direction: column; gap: 20px; }
+        .submission-card { background-color: var(--card-bg); border: 2px solid var(--border-color); border-radius: 20px; padding: 25px; transition: all 0.3s ease; }
+        .submission-card:hover { border-color: var(--accent-color); }
+        .submission-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        .submission-info h3 { margin: 0 0 8px 0; font-size: 1.3rem; font-weight: 600; }
+        .submission-info .meta { display: flex; gap: 20px; flex-wrap: wrap; }
+        .meta-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 0.9rem; }
+        .meta-item svg { width: 16px; height: 16px; stroke: currentColor; }
+        .score-badge { padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 0.95rem; }
+        .score-high { background-color: var(--success-color); color: white; }
+        .score-medium { background-color: var(--warning-color); color: white; }
+        .score-low { background-color: #f44336; color: white; }
+        .score-none { background-color: var(--text-muted); color: white; }
+        .expand-btn { background: none; border: 2px solid var(--border-color); padding: 10px 25px; border-radius: 50px; color: var(--text-color); font-family: 'Poppins', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin-top: 15px; }
+        .expand-btn:hover { background-color: var(--border-color); color: var(--bg-color); }
+        .answers-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); display: none; }
+        .answers-section.visible { display: block; }
+        .answer-item { margin-bottom: 20px; padding: 15px; background-color: var(--hover-bg); border-radius: 10px; }
+        .answer-item .question { font-weight: 600; margin-bottom: 8px; color: var(--text-color); }
+        .answer-item .answer { color: var(--text-muted); margin-left: 20px; }
+        .no-submissions { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="grid-background"></div>
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">POPQUIZ</div>
+                <a href="dashboard.html" class="back-arrow">&lt;</a>
+            </div>
+            <button class="theme-toggle-btn" id="theme-toggle" title="Toggle theme">
+                <svg class="theme-icon icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="theme-icon icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+        
+        <div class="content">
+            <h1 class="page-title">STUDENT RESPONSES</h1>
+            
+            <div class="filters">
+                <input type="search" id="search-filter" class="filter-input" placeholder="Search by student name, quiz, or topic...">
+            </div>
+            
+            <div id="submissions-list" class="submissions-list">
+                <div class="no-submissions">Loading submissions...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('popquiz-theme') || 'dark';
+        if (currentTheme === 'light') {
+            document.body.classList.add('light-mode');
+        }
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const theme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+            localStorage.setItem('popquiz-theme', theme);
+        });
+
+        // Load submissions
+        let allSubmissions = [];
+        
+        async function loadSubmissions() {
+            const token = localStorage.getItem('popquiz_teacher_token');
+            if (!token) {
+                window.location.href = 'faculty-login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/teacher/quiz-submissions', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = 'faculty-login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load submissions');
+                }
+
+                const data = await response.json();
+                allSubmissions = data.submissions || [];
+                renderSubmissions(allSubmissions);
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                document.getElementById('submissions-list').innerHTML = 
+                    '<div class="no-submissions">Error loading submissions. Please try again.</div>';
+            }
+        }
+
+        function renderSubmissions(submissions) {
+            const container = document.getElementById('submissions-list');
+            
+            if (submissions.length === 0) {
+                container.innerHTML = '<div class="no-submissions">No student submissions yet.</div>';
+                return;
+            }
+
+            container.innerHTML = submissions.map(sub => {
+                const date = new Date(sub.submitted_at);
+                const scoreClass = sub.score === null ? 'score-none' : 
+                                  sub.score >= 70 ? 'score-high' :
+                                  sub.score >= 40 ? 'score-medium' : 'score-low';
+                const scoreText = sub.score === null ? 'Not Graded' : `${sub.score}%`;
+
+                return `
+                    <div class="submission-card" data-submission-id="${sub.id}">
+                        <div class="submission-header">
+                            <div class="submission-info">
+                                <h3>${sub.quiz_name}</h3>
+                                <div class="meta">
+                                    <div class="meta-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                        <span>${sub.student_name || sub.student_email}</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>${date.toLocaleDateString()} at ${date.toLocaleTimeString()}</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                        </svg>
+                                        <span>${sub.quiz_topic}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="score-badge ${scoreClass}">${scoreText}</div>
+                        </div>
+                        <button class="expand-btn" onclick="toggleAnswers(${sub.id})">
+                            View Answers
+                        </button>
+                        <div class="answers-section" id="answers-${sub.id}">
+                            ${renderAnswers(sub.questions, sub.answers)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAnswers(questions, answers) {
+            if (!questions || questions.length === 0) {
+                return '<p style="color: var(--text-muted);">No questions available</p>';
+            }
+
+            return questions.map((q, index) => {
+                const answer = answers[`question_${index}`] || answers[index] || 'No answer provided';
+                return `
+                    <div class="answer-item">
+                        <div class="question">Q${index + 1}: ${q}</div>
+                        <div class="answer"><strong>Answer:</strong> ${answer}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleAnswers(submissionId) {
+            const answersSection = document.getElementById(`answers-${submissionId}`);
+            const btn = event.target;
+            
+            if (answersSection.classList.contains('visible')) {
+                answersSection.classList.remove('visible');
+                btn.textContent = 'View Answers';
+            } else {
+                answersSection.classList.add('visible');
+                btn.textContent = 'Hide Answers';
+            }
+        }
+
+        // Search functionality
+        document.getElementById('search-filter').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = allSubmissions.filter(sub => 
+                (sub.student_name || '').toLowerCase().includes(searchTerm) ||
+                sub.student_email.toLowerCase().includes(searchTerm) ||
+                sub.quiz_name.toLowerCase().includes(searchTerm) ||
+                sub.quiz_topic.toLowerCase().includes(searchTerm)
+            );
+            renderSubmissions(filtered);
+        });
+
+        // Load submissions on page load
+        loadSubmissions();
+    </script>
+</body>
+</html>

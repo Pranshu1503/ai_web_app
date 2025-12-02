@@ -90,7 +90,10 @@
         <div class="content-wrapper">
             <div class="dashboard-header">
                 <h1>DASHBOARD</h1>
-                <a href="generate-quiz.html" class="create-new-btn">CREATE NEW QUIZ</a>
+                <div style="display: flex; gap: 15px;">
+                    <a href="student-response.html" class="create-new-btn" style="background-color: transparent; color: var(--text-color);">STUDENT RESPONSES</a>
+                    <a href="generate-quiz.html" class="create-new-btn">CREATE NEW QUIZ</a>
+                </div>
             </div>
             <div class="quiz-controls">
                 <input type="search" id="search-quizzes" placeholder="Search my quizzes...">
@@ -118,7 +121,7 @@
             const iconDuplicate = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
             const iconDelete = `<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
             let quizzes = [];
-            const token = localStorage.getItem('popquiz_token');
+            const token = localStorage.getItem('popquiz_teacher_token');
             if (token) {
                 fetch('http://localhost:8000/quizzes', { headers: { 'Authorization': 'Bearer ' + token } })
                 .then(r => r.json().then(data => ({ok: r.ok, body: data})))
@@ -167,7 +170,7 @@
             // Duplicate quiz
             if (button.classList.contains('duplicate-btn')) {
                 const id = Number(button.dataset.id);
-                const token = localStorage.getItem('popquiz_token');
+                const token = localStorage.getItem('popquiz_teacher_token');
                 if (!token) { alert('You must be logged in to duplicate a quiz.'); window.location.href = 'faculty-login.html'; return; }
                 fetch(`http://localhost:8000/quizzes/${id}/duplicate`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } })
                 .then(r => r.json().then(data => ({ ok: r.ok, body: data })))
@@ -192,7 +195,7 @@
             if (button.classList.contains('delete-btn')) {
                 const id = Number(button.dataset.id);
                 if (!confirm('Are you sure you want to delete this quiz?')) return;
-                const token = localStorage.getItem('popquiz_token');
+                const token = localStorage.getItem('popquiz_teacher_token');
                 if (!token) { alert('You must be logged in to delete a quiz.'); window.location.href = 'faculty-login.html'; return; }
                 fetch(`http://localhost:8000/quizzes/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } })
                 .then(async (r) => {

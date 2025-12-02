@@ -146,7 +146,7 @@
             let currentMeta = { topic: 'General', bloom_level: 'Understanding', question_type: 'Short Answer' };
 
             // If a quiz id is present, fetch it from backend and populate editor
-            const token = localStorage.getItem('popquiz_token');
+            const token = localStorage.getItem('popquiz_teacher_token');
             if (editingQuizId) {
                 if (!token) {
                     alert('You must be logged in to view this quiz. Redirecting to login.');
@@ -219,10 +219,10 @@
                         // Note: backend expects `num_questions` (not `num`). Use matching field name.
                         const payload = { topic: currentMeta.topic || 'General', question_type: currentMeta.question_type || 'Short Answer', bloom_level: currentMeta.bloom_level || 'Understanding', num_questions: 1 };
                         try {
-                            const hasToken = Boolean(localStorage.getItem('popquiz_token'));
+                            const hasToken = Boolean(localStorage.getItem('popquiz_teacher_token'));
                             const url = hasToken ? 'http://localhost:8000/generate_questions' : 'http://localhost:8000/test/generate_questions';
                             const headers = { 'Content-Type': 'application/json' };
-                            if (hasToken) headers['Authorization'] = 'Bearer ' + localStorage.getItem('popquiz_token');
+                            if (hasToken) headers['Authorization'] = 'Bearer ' + localStorage.getItem('popquiz_teacher_token');
                             const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
                             if (!res.ok) {
                                 const body = await res.json().catch(() => ({}));
@@ -373,7 +373,7 @@
                 const meta = JSON.parse(sessionStorage.getItem('generated_meta') || '{}');
                 const payload = { name: quizName, questions: allQuestions, topic: meta.topic || 'General', bloom_level: meta.bloom_level || 'Understanding', question_type: meta.question_type || 'Short Answer' };
 
-                const t = localStorage.getItem('popquiz_token');
+                const t = localStorage.getItem('popquiz_teacher_token');
                 if (!t) { alert('You must be logged in to save a quiz. Redirecting to login.'); window.location.href = 'faculty-login.html'; return; }
 
                 const isUpdate = Boolean(editingQuizId);

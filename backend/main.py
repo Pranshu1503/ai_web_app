@@ -35,6 +35,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Pydantic Models
 class UserSignup(BaseModel):
+    name: str
     email: EmailStr
     password: str
     role: Optional[str] = 'teacher'
@@ -48,6 +49,11 @@ class GenerateRequest(BaseModel):
     bloom_level: str
     question_type: str
     num_questions: int
+
+class QuizSubmissionRequest(BaseModel):
+    quiz_id: int
+    answers: dict
+    score: Optional[float] = None
 
 class SaveQuizRequest(BaseModel):
     name: str
@@ -72,6 +78,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'teacher',
@@ -79,7 +86,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # Ensure role and is_verified columns exist for older DBs
+    # Ensure role, is_verified, and name columns exist for older DBs
     cursor.execute("PRAGMA table_info(users)")
     cols = [row[1] for row in cursor.fetchall()]
     if 'role' not in cols:
@@ -90,6 +97,11 @@ def init_db():
     if 'is_verified' not in cols:
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+        except Exception:
+            pass
+    if 'name' not in cols:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN name TEXT")
         except Exception:
             pass
     
@@ -128,6 +140,20 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    
+    # Quiz submissions table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quiz_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quiz_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            answers TEXT NOT NULL,  -- JSON string with student answers
+            score REAL,
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (quiz_id) REFERENCES quizzes (id),
+            FOREIGN KEY (student_id) REFERENCES users (id)
         )
     ''')
     
@@ -212,7 +238,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT u.id, u.email FROM users u
+        SELECT u.id, u.email, u.role FROM users u
         JOIN sessions s ON u.id = s.user_id
         WHERE s.token = ? AND s.expires_at > ?
     ''', (credentials.credentials, datetime.now()))
@@ -223,9 +249,32 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    return {"id": user[0], "email": user[1]}
+    return {"id": user[0], "email": user[1], "role": user[2]}
 
 # Authentication endpoints
+@app.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    """Get current user's information including name"""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT id, name, email, role FROM users WHERE id = ?
+    ''', (current_user["id"],))
+    
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user[0],
+        "name": user[1],
+        "email": user[2],
+        "role": user[3]
+    }
+
 @app.post("/auth/signup")
 async def signup(user_data: UserSignup):
     conn = sqlite3.connect('popquiz.db')
@@ -240,8 +289,8 @@ async def signup(user_data: UserSignup):
         # Create new user (unverified)
         password_hash = hash_password(user_data.password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, role, is_verified) VALUES (?, ?, ?, 0)
-        ''', (user_data.email, password_hash, user_data.role or 'teacher'))
+            INSERT INTO users (name, email, password_hash, role, is_verified) VALUES (?, ?, ?, ?, 0)
+        ''', (user_data.name, user_data.email, password_hash, user_data.role or 'teacher'))
         
         user_id = cursor.lastrowid
         
@@ -316,8 +365,8 @@ async def student_signup(user_data: UserSignup):
             raise HTTPException(status_code=400, detail='Email already registered')
         password_hash = hash_password(user_data.password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, role, is_verified) VALUES (?, ?, ?, 0)
-        ''', (user_data.email, password_hash, 'student'))
+            INSERT INTO users (name, email, password_hash, role, is_verified) VALUES (?, ?, ?, ?, 0)
+        ''', (user_data.name, user_data.email, password_hash, 'student'))
         
         user_id = cursor.lastrowid
         
@@ -364,6 +413,174 @@ async def student_login(user_data: UserLogin):
         cursor.execute('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', (token, user[0], expires_at))
         conn.commit()
         return { 'message': 'Login successful', 'token': token, 'expires_at': expires_at.isoformat() }
+    finally:
+        conn.close()
+
+async def grade_answers_with_ollama(questions: list, answers: dict) -> int:
+    """Grade student answers using Ollama Mistral 7B."""
+    try:
+        # Prepare grading prompt
+        qa_pairs = []
+        for i, question in enumerate(questions):
+            answer_key = f"question_{i}"
+            student_answer = answers.get(answer_key, "No answer provided")
+            
+            # Extract question text
+            if isinstance(question, dict):
+                q_text = question.get('question', str(question))
+            else:
+                q_text = str(question)
+            
+            qa_pairs.append(f"Question {i+1}: {q_text}\nStudent Answer: {student_answer}")
+        
+        qa_text = "\n\n".join(qa_pairs)
+        
+        prompt = f"""You are a grading assistant for B.Tech level quizzes. Grade the following student answers on a scale of 0-100.
+
+{qa_text}
+
+Evaluate each answer based on:
+1. Correctness and accuracy of information
+2. Completeness of the response
+3. Clarity and coherence
+4. Technical accuracy
+
+Provide ONLY a single number between 0 and 100 representing the overall score percentage. Do not include any explanations, just the number."""
+
+        payload = {
+            "model": "mistral:7b",
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        response = requests.post(OLLAMA_URL, json=payload, timeout=45)
+        response.raise_for_status()
+        data = response.json()
+        generated_text = data.get("response", "").strip()
+        
+        # Extract numeric score
+        import re
+        numbers = re.findall(r'\d+', generated_text)
+        if numbers:
+            score = int(numbers[0])
+            # Ensure score is within 0-100 range
+            score = max(0, min(100, score))
+            return score
+        else:
+            # Default score if parsing fails
+            return 50
+            
+    except Exception as e:
+        print(f"Error grading with Ollama: {str(e)}")
+        # Return a default score if grading fails
+        return 50
+
+@app.post('/student/submit-quiz')
+async def submit_quiz(submission: QuizSubmissionRequest, current_user: dict = Depends(get_current_user)):
+    """Submit student quiz answers and grade them using Ollama."""
+    print(f"DEBUG: Current user role: {current_user.get('role')}, expected: 'student'")
+    if current_user.get('role') != 'student':
+        raise HTTPException(status_code=403, detail=f'Only students can submit quizzes. Your role: {current_user.get("role")}')
+    
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Check if student already submitted this quiz
+        cursor.execute('''
+            SELECT id FROM quiz_submissions 
+            WHERE quiz_id = ? AND student_id = ?
+        ''', (submission.quiz_id, current_user['id']))
+        
+        existing_submission = cursor.fetchone()
+        if existing_submission:
+            raise HTTPException(status_code=400, detail='You have already submitted this quiz')
+        
+        # Get quiz questions
+        cursor.execute('SELECT questions FROM quizzes WHERE id = ?', (submission.quiz_id,))
+        quiz_row = cursor.fetchone()
+        if not quiz_row:
+            raise HTTPException(status_code=404, detail='Quiz not found')
+        
+        questions = json.loads(quiz_row[0]) if quiz_row[0] else []
+        
+        # Grade the answers using Ollama
+        print(f"Grading quiz submission for student {current_user['id']}...")
+        score = await grade_answers_with_ollama(questions, submission.answers)
+        print(f"Graded score: {score}%")
+        
+        # Insert submission with graded score
+        cursor.execute('''
+            INSERT INTO quiz_submissions (quiz_id, student_id, answers, score)
+            VALUES (?, ?, ?, ?)
+        ''', (submission.quiz_id, current_user['id'], json.dumps(submission.answers), score))
+        
+        conn.commit()
+        return {
+            'message': 'Quiz submitted and graded successfully', 
+            'submission_id': cursor.lastrowid,
+            'score': score
+        }
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        if 'UNIQUE constraint failed' in str(e) or 'idx_unique_submission' in str(e):
+            raise HTTPException(status_code=400, detail='You have already submitted this quiz')
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        conn.rollback()
+        print(f"Error in submit_quiz: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.post('/student/regrade-submissions')
+async def regrade_submissions(current_user: dict = Depends(get_current_user)):
+    """Regrade all ungraded submissions for the current student."""
+    if current_user.get('role') != 'student':
+        raise HTTPException(status_code=403, detail='Only students can regrade their submissions')
+    
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Get all submissions with NULL scores for this student
+        cursor.execute('''
+            SELECT qs.id, qs.quiz_id, qs.answers, q.questions
+            FROM quiz_submissions qs
+            JOIN quizzes q ON qs.quiz_id = q.id
+            WHERE qs.student_id = ? AND (qs.score IS NULL OR qs.score = 0)
+        ''', (current_user['id'],))
+        
+        submissions = cursor.fetchall()
+        graded_count = 0
+        
+        for sub_id, quiz_id, answers_json, questions_json in submissions:
+            try:
+                questions = json.loads(questions_json) if questions_json else []
+                answers = json.loads(answers_json) if answers_json else {}
+                
+                # Grade the answers
+                score = await grade_answers_with_ollama(questions, answers)
+                
+                # Update the score
+                cursor.execute('''
+                    UPDATE quiz_submissions SET score = ? WHERE id = ?
+                ''', (score, sub_id))
+                
+                graded_count += 1
+                print(f"Regraded submission {sub_id}: {score}%")
+            except Exception as e:
+                print(f"Error regrading submission {sub_id}: {str(e)}")
+                continue
+        
+        conn.commit()
+        return {
+            'message': f'Successfully regraded {graded_count} submissions',
+            'graded_count': graded_count
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
 
@@ -713,19 +930,20 @@ async def get_user_quizzes(current_user: dict = Depends(get_current_user)):
 
 @app.get("/quizzes/assigned")
 async def get_assigned_quizzes(current_user: dict = Depends(get_current_user)):
-    """Return all quizzes in the system (assigned by teachers).
-    Students will use this to see available quizzes. This endpoint returns
-    basic metadata about each quiz and the creator's email.
+    """Return all quizzes that the student hasn't completed yet.
+    Students will use this to see available quizzes.
     """
     conn = sqlite3.connect('popquiz.db')
     cursor = conn.cursor()
 
     cursor.execute('''
-        SELECT q.id, q.name, q.topic, q.bloom_level, q.question_type, q.created_at, q.updated_at, u.email
+        SELECT q.id, q.name, q.topic, q.bloom_level, q.question_type, q.created_at, q.updated_at, u.name, u.email
         FROM quizzes q
         JOIN users u ON q.user_id = u.id
+        LEFT JOIN quiz_submissions qs ON q.id = qs.quiz_id AND qs.student_id = ?
+        WHERE qs.id IS NULL
         ORDER BY q.updated_at DESC
-    ''')
+    ''', (current_user["id"],))
 
     quizzes = []
     for row in cursor.fetchall():
@@ -737,12 +955,124 @@ async def get_assigned_quizzes(current_user: dict = Depends(get_current_user)):
             "question_type": row[4],
             "created_at": row[5],
             "updated_at": row[6],
-            "creator_email": row[7]
+            "creator_name": row[7] or row[8],
+            "creator_email": row[8]
         }
         quizzes.append(quiz)
 
     conn.close()
     return {"quizzes": quizzes}
+
+@app.get("/quizzes/completed")
+async def get_completed_quizzes(current_user: dict = Depends(get_current_user)):
+    """Return all quizzes that the student has completed.
+    """
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT q.id, q.name, q.topic, q.bloom_level, q.question_type, q.created_at, q.updated_at, u.name, u.email, qs.submitted_at, qs.score
+        FROM quizzes q
+        JOIN users u ON q.user_id = u.id
+        JOIN quiz_submissions qs ON q.id = qs.quiz_id AND qs.student_id = ?
+        ORDER BY qs.submitted_at DESC
+    ''', (current_user["id"],))
+
+    quizzes = []
+    for row in cursor.fetchall():
+        quiz = {
+            "id": row[0],
+            "name": row[1],
+            "topic": row[2],
+            "bloom_level": row[3],
+            "question_type": row[4],
+            "created_at": row[5],
+            "updated_at": row[6],
+            "creator_name": row[7] or row[8],
+            "creator_email": row[8],
+            "submitted_at": row[9],
+            "score": row[10]
+        }
+        quizzes.append(quiz)
+
+    conn.close()
+    return {"quizzes": quizzes}
+
+@app.get("/teacher/quiz-submissions")
+async def get_teacher_quiz_submissions(current_user: dict = Depends(get_current_user)):
+    """Get all quiz submissions for quizzes created by the logged-in teacher."""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT 
+            qs.id, qs.quiz_id, qs.student_id, qs.answers, qs.score, qs.submitted_at,
+            q.name as quiz_name, q.topic, q.questions,
+            u.name as student_name, u.email as student_email
+        FROM quiz_submissions qs
+        JOIN quizzes q ON qs.quiz_id = q.id
+        JOIN users u ON qs.student_id = u.id
+        WHERE q.user_id = ?
+        ORDER BY qs.submitted_at DESC
+    ''', (current_user["id"],))
+    
+    submissions = []
+    for row in cursor.fetchall():
+        submission = {
+            "id": row[0],
+            "quiz_id": row[1],
+            "student_id": row[2],
+            "answers": json.loads(row[3]) if row[3] else {},
+            "score": row[4],
+            "submitted_at": row[5],
+            "quiz_name": row[6],
+            "quiz_topic": row[7],
+            "questions": json.loads(row[8]) if row[8] else [],
+            "student_name": row[9],
+            "student_email": row[10]
+        }
+        submissions.append(submission)
+    
+    conn.close()
+    return {"submissions": submissions}
+
+@app.get("/student/my-submissions")
+async def get_student_submissions(current_user: dict = Depends(get_current_user)):
+    """Get all quiz submissions for the logged-in student with full details."""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT 
+            qs.id, qs.quiz_id, qs.student_id, qs.answers, qs.score, qs.submitted_at,
+            q.name as quiz_name, q.topic, q.questions,
+            u.name as creator_name, u.email as creator_email
+        FROM quiz_submissions qs
+        JOIN quizzes q ON qs.quiz_id = q.id
+        JOIN users u ON q.user_id = u.id
+        WHERE qs.student_id = ?
+        ORDER BY qs.submitted_at DESC
+    ''', (current_user["id"],))
+    
+    submissions = []
+    for row in cursor.fetchall():
+        submission = {
+            "id": row[0],
+            "quiz_id": row[1],
+            "student_id": row[2],
+            "answers": json.loads(row[3]) if row[3] else {},
+            "score": row[4],
+            "submitted_at": row[5],
+            "quiz_name": row[6],
+            "quiz_topic": row[7],
+            "questions": json.loads(row[8]) if row[8] else [],
+            "creator_name": row[9],
+            "creator_email": row[10]
+        }
+        submissions.append(submission)
+    
+    conn.close()
+    return {"submissions": submissions}
 
 @app.get("/quizzes/{quiz_id}")
 async def get_quiz(quiz_id: int, current_user: dict = Depends(get_current_user)):

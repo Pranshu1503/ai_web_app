@@ -138,7 +138,7 @@
                     return;
                 }
                 const token = result.body.token;
-                localStorage.setItem('popquiz_token', token);
+                localStorage.setItem('popquiz_teacher_token', token);
                 alert('Authentication successful! Redirecting to your dashboard...');
                 window.location.href = 'dashboard.html';
             }).catch(err => {
