@@ -365,21 +365,8 @@
                         const completedList = [];
                         
                         quizzes.forEach(q => {
-                            const label = (q.name || q.topic || '').toString().toLowerCase();
-                            // Move to completed: OS quiz, DSA unit-2, CN Quiz
-                            if (label.includes('os') || label.includes('operating system') || 
-                                (label.includes('dsa') && label.includes('unit-2')) ||
-                                label.includes('cn quiz') || (label.includes('cn') && label.includes('quiz'))) {
-                                completedList.push(q);
-                            } 
-                            // Move to assigned: RF quiz, RF IA-2
-                            else if (label.includes('rf')) {
-                                assignedList.push(q);
-                            }
-                            // Default: keep in assigned
-                            else {
-                                assignedList.push(q);
-                            }
+                            // All quizzes go to assigned by default
+                            assignedList.push(q);
                         });
 
                         // Render remaining assigned
