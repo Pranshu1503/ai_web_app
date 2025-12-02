@@ -15,9 +15,12 @@ A comprehensive web application for faculty to generate, manage, and export educ
 
 ### Authentication System
 
-- Faculty signup and login
+- **Email Verification**: 2-factor authentication with email confirmation
+- Faculty and student signup with email verification
 - Secure session management with JWT-like tokens
 - Protected routes for all quiz operations
+- Users must verify email before logging in
+- Verification tokens expire after 24 hours
 
 ### AI-Powered Quiz Generation
 
@@ -114,7 +117,24 @@ python setup.py
    pip install -r backend/requirements.txt
    ```
 
-4. **Run the Application**
+4. **Configure Email Verification** (Required for signups)
+
+   Set up environment variables for email verification:
+
+   ```bash
+   # For Gmail (recommended for testing)
+   set SMTP_HOST=smtp.gmail.com
+   set SMTP_PORT=587
+   set SMTP_USERNAME=your-email@gmail.com
+   set SMTP_PASSWORD=your-app-password
+   set FRONTEND_URL=http://localhost:8001
+   ```
+
+   **Quick Setup**: Run `setup_email.bat` and follow the prompts
+
+   📖 **Detailed instructions**: See [QUICK_START_EMAIL.md](QUICK_START_EMAIL.md)
+
+5. **Run the Application**
 
    ```bash
    # Start backend (Terminal 1)
@@ -124,7 +144,7 @@ python setup.py
    python start_frontend.py
    ```
 
-5. **Access the App**
+6. **Access the App**
    - Open browser: `http://localhost:3000`
    - Click "FACULTY" to start using the system
 

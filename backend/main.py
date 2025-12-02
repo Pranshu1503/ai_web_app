@@ -29,9 +29,9 @@ security = HTTPBearer()
 # Email Configuration (Use environment variables in production)
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "your-email@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "your-app-password")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8001")
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "sharmapranshu15@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "kvqiwomfkesevira")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Pydantic Models
 class UserSignup(BaseModel):
@@ -147,6 +147,66 @@ def verify_password(password: str, hash: str) -> bool:
 def create_session_token() -> str:
     return secrets.token_urlsafe(32)
 
+def create_verification_token() -> str:
+    return secrets.token_urlsafe(32)
+
+async def send_verification_email(email: str, token: str):
+    """Send verification email to user"""
+    try:
+        verification_link = f"{FRONTEND_URL}/verify-email.html?token={token}"
+        
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Verify Your PopQuiz Account"
+        message["From"] = SMTP_USERNAME
+        message["To"] = email
+        
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 10px;">
+                    <h2 style="color: #4CAF50; text-align: center;">Welcome to PopQuiz!</h2>
+                    <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{verification_link}" 
+                           style="display: inline-block; padding: 12px 30px; background-color: #4CAF50; color: white; 
+                                  text-decoration: none; border-radius: 5px; font-weight: bold;">
+                            Verify Email Address
+                        </a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">
+                        Or copy and paste this link into your browser:<br>
+                        <a href="{verification_link}" style="color: #4CAF50;">{verification_link}</a>
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        This link will expire in 24 hours.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                        If you didn't create an account, please ignore this email.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        html_part = MIMEText(html_content, "html")
+        message.attach(html_part)
+        
+        await aiosmtplib.send(
+            message,
+            hostname=SMTP_HOST,
+            port=SMTP_PORT,
+            username=SMTP_USERNAME,
+            password=SMTP_PASSWORD,
+            start_tls=True
+        )
+        print(f"✅ Verification email sent successfully to {email}")
+        return True
+    except Exception as e:
+        print(f"❌ Error sending email to {email}: {str(e)}")
+        print(f"SMTP Config: {SMTP_HOST}:{SMTP_PORT}, Username: {SMTP_USERNAME}")
+        return False
+
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     conn = sqlite3.connect('popquiz.db')
     cursor = conn.cursor()
@@ -177,14 +237,31 @@ async def signup(user_data: UserSignup):
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        # Create new user
+        # Create new user (unverified)
         password_hash = hash_password(user_data.password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)
+            INSERT INTO users (email, password_hash, role, is_verified) VALUES (?, ?, ?, 0)
         ''', (user_data.email, password_hash, user_data.role or 'teacher'))
         
+        user_id = cursor.lastrowid
+        
+        # Generate verification token
+        verification_token = create_verification_token()
+        expires_at = datetime.now() + timedelta(hours=24)
+        
+        cursor.execute('''
+            INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)
+        ''', (user_id, verification_token, expires_at))
+        
         conn.commit()
-        return {"message": "User created successfully"}
+        
+        # Send verification email
+        email_sent = await send_verification_email(user_data.email, verification_token)
+        
+        if not email_sent:
+            return {"message": "User created but email verification failed. Please contact support.", "email_sent": False}
+        
+        return {"message": "User created successfully. Please check your email to verify your account.", "email_sent": True}
     
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -198,11 +275,15 @@ async def login(user_data: UserLogin):
     
     try:
         # Verify user credentials
-        cursor.execute('SELECT id, password_hash, role FROM users WHERE email = ?', (user_data.email,))
+        cursor.execute('SELECT id, password_hash, role, is_verified FROM users WHERE email = ?', (user_data.email,))
         user = cursor.fetchone()
         
         if not user or not verify_password(user_data.password, user[1]):
             raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Check if email is verified
+        if not user[3]:  # is_verified column
+            raise HTTPException(status_code=403, detail="Please verify your email before logging in")
         
         # Create session token
         token = create_session_token()
@@ -235,10 +316,28 @@ async def student_signup(user_data: UserSignup):
             raise HTTPException(status_code=400, detail='Email already registered')
         password_hash = hash_password(user_data.password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)
+            INSERT INTO users (email, password_hash, role, is_verified) VALUES (?, ?, ?, 0)
         ''', (user_data.email, password_hash, 'student'))
+        
+        user_id = cursor.lastrowid
+        
+        # Generate verification token
+        verification_token = create_verification_token()
+        expires_at = datetime.now() + timedelta(hours=24)
+        
+        cursor.execute('''
+            INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)
+        ''', (user_id, verification_token, expires_at))
+        
         conn.commit()
-        return { 'message': 'Student account created successfully' }
+        
+        # Send verification email
+        email_sent = await send_verification_email(user_data.email, verification_token)
+        
+        if not email_sent:
+            return {'message': 'Student account created but email verification failed. Please contact support.', 'email_sent': False}
+        
+        return {'message': 'Student account created successfully. Please check your email to verify your account.', 'email_sent': True}
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail='Email already registered')
     finally:
@@ -251,17 +350,107 @@ async def student_login(user_data: UserLogin):
     conn = sqlite3.connect('popquiz.db')
     cursor = conn.cursor()
     try:
-        cursor.execute('SELECT id, password_hash, role FROM users WHERE email = ?', (user_data.email,))
+        cursor.execute('SELECT id, password_hash, role, is_verified FROM users WHERE email = ?', (user_data.email,))
         user = cursor.fetchone()
         if not user or not verify_password(user_data.password, user[1]):
             raise HTTPException(status_code=401, detail='Invalid email or password')
         if user[2] != 'student':
             raise HTTPException(status_code=403, detail='User is not a student')
+        # Check if email is verified
+        if not user[3]:  # is_verified column
+            raise HTTPException(status_code=403, detail='Please verify your email before logging in')
         token = create_session_token()
         expires_at = datetime.now() + timedelta(days=7)
         cursor.execute('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', (token, user[0], expires_at))
         conn.commit()
         return { 'message': 'Login successful', 'token': token, 'expires_at': expires_at.isoformat() }
+    finally:
+        conn.close()
+
+@app.get("/auth/verify-email")
+async def verify_email(token: str):
+    """Verify user email with token"""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Check if token exists and is valid
+        cursor.execute('''
+            SELECT user_id, expires_at FROM verification_tokens 
+            WHERE token = ?
+        ''', (token,))
+        
+        result = cursor.fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=400, detail="Invalid verification token")
+        
+        user_id, expires_at = result
+        expires_at_dt = datetime.fromisoformat(expires_at)
+        
+        if datetime.now() > expires_at_dt:
+            raise HTTPException(status_code=400, detail="Verification token has expired")
+        
+        # Check if user is already verified
+        cursor.execute('SELECT is_verified FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        
+        if user and user[0]:
+            return {"message": "Email already verified", "already_verified": True}
+        
+        # Mark user as verified
+        cursor.execute('UPDATE users SET is_verified = 1 WHERE id = ?', (user_id,))
+        
+        # Delete used token
+        cursor.execute('DELETE FROM verification_tokens WHERE token = ?', (token,))
+        
+        conn.commit()
+        
+        return {"message": "Email verified successfully", "verified": True}
+    
+    finally:
+        conn.close()
+
+@app.post("/auth/resend-verification")
+async def resend_verification(user_data: UserLogin):
+    """Resend verification email"""
+    conn = sqlite3.connect('popquiz.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Check if user exists
+        cursor.execute('SELECT id, is_verified FROM users WHERE email = ?', (user_data.email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_id, is_verified = user
+        
+        if is_verified:
+            raise HTTPException(status_code=400, detail="Email already verified")
+        
+        # Delete old tokens
+        cursor.execute('DELETE FROM verification_tokens WHERE user_id = ?', (user_id,))
+        
+        # Generate new verification token
+        verification_token = create_verification_token()
+        expires_at = datetime.now() + timedelta(hours=24)
+        
+        cursor.execute('''
+            INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)
+        ''', (user_id, verification_token, expires_at))
+        
+        conn.commit()
+        
+        # Send verification email
+        email_sent = await send_verification_email(user_data.email, verification_token)
+        
+        if not email_sent:
+            raise HTTPException(status_code=500, detail="Failed to send verification email")
+        
+        return {"message": "Verification email sent successfully"}
+    
     finally:
         conn.close()
 

@@ -111,16 +111,27 @@
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            
+            // Store role for verification page redirect
+            localStorage.setItem('signup-role', 'student');
+            
             fetch('http://localhost:8000/student/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             }).then(r => r.json().then(data => ({ok: r.ok, body: data})))
             .then(result => {
-                if (!result.ok) { alert(result.body.detail || 'Signup failed'); return; }
-                alert('Account created successfully! Please sign in.');
+                if (!result.ok) { 
+                    alert(result.body.detail || 'Signup failed'); 
+                    return; 
+                }
+                // Show verification message
+                alert('Account created successfully! Please check your email (' + email + ') to verify your account before logging in.');
                 window.location.href = 'student-login.html';
-            }).catch(err => { console.error(err); alert('Unable to reach backend. Make sure the backend is running at http://localhost:8000'); });
+            }).catch(err => { 
+                console.error(err); 
+                alert('Unable to reach backend. Make sure the backend is running at http://localhost:8000'); 
+            });
         });
     </script>
     <div style="position:fixed;right:12px;bottom:8px;color:#777;font-size:12px">student-signup.html — updated</div>

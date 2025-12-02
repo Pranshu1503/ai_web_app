@@ -124,7 +124,15 @@
                 body: JSON.stringify({ email, password })
             }).then(r => r.json().then(data => ({ok: r.ok, status: r.status, body: data})))
             .then(result => {
-                if (!result.ok) { alert(result.body.detail || 'Login failed'); return; }
+                if (!result.ok) {
+                    const errorMsg = result.body.detail || 'Login failed';
+                    if (errorMsg.includes('verify your email')) {
+                        alert(errorMsg + '\n\nPlease check your email inbox for the verification link. If you did not receive it, you can request a new one.');
+                    } else {
+                        alert(errorMsg);
+                    }
+                    return;
+                }
                 const token = result.body.token;
                 localStorage.setItem('popquiz_token', token);
                 alert('Authentication successful! Redirecting to your dashboard...');

@@ -110,6 +110,10 @@
             event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            
+            // Store role for verification page redirect
+            localStorage.setItem('signup-role', 'teacher');
+            
             fetch('http://localhost:8000/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -120,7 +124,8 @@
                     alert(result.body.detail || 'Signup failed');
                     return;
                 }
-                alert('Account created successfully! Please sign in.');
+                // Show verification message
+                alert('Account created successfully! Please check your email (' + email + ') to verify your account before logging in.');
                 window.location.href = 'faculty-login.html';
             }).catch(err => {
                 console.error(err);
