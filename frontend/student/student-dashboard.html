@@ -7,6 +7,35 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@300;400;600&display=swap');
 
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --grid-color: rgba(255, 255, 255, 0.4);
+            --border-color: #ffffff;
+            --nav-btn-text: #ffffff;
+            --nav-btn-border: #ffffff;
+            --nav-btn-hover-bg: #ffffff;
+            --nav-btn-hover-text: #000000;
+            --card-bg: #111;
+            --card-border: #333;
+            --text-muted: #aaa;
+            --bar-color: #555;
+        }
+        body.light-mode {
+            --bg-color: #f4f7f9;
+            --text-color: #111827;
+            --grid-color: rgba(0, 0, 0, 0.1);
+            --border-color: #111827;
+            --nav-btn-text: #111827;
+            --nav-btn-border: #111827;
+            --nav-btn-hover-bg: #111827;
+            --nav-btn-hover-text: #ffffff;
+            --card-bg: #ffffff;
+            --card-border: #ddd;
+            --text-muted: #555;
+            --bar-color: #ccc;
+        }
+
         body, html {
             margin: 0;
             padding: 0;
@@ -14,6 +43,9 @@
             height: 100%;
             font-family: 'Poppins', sans-serif;
             overflow-y: auto;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .dashboard-container {
@@ -22,8 +54,8 @@
             align-items: center;
             flex-direction: column;
             min-height: 100vh;
-            background-color: #000000;
-            color: #ffffff;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             position: relative;
             text-align: center;
             padding: 150px 20px 50px 20px;
@@ -37,8 +69,8 @@
             width: 100%;
             height: 50%;
             background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
             background-size: 40px 40px;
             transform-style: preserve-3d;
             transform: perspective(500px) rotateX(75deg);
@@ -70,9 +102,15 @@
         }
 
         .nav-btn {
-            color: #fff; text-decoration: none; font-weight: 600; border: 2px solid #fff; padding: 8px 15px; border-radius: 50px; transition: all 0.3s ease; font-size: 0.9rem;
+            color: var(--nav-btn-text); text-decoration: none; font-weight: 600; border: 2px solid var(--nav-btn-border); padding: 8px 15px; border-radius: 50px; transition: all 0.3s ease; font-size: 0.9rem;
         }
-        .nav-btn:hover { background-color: #fff; color: #000; }
+        .nav-btn:hover { background-color: var(--nav-btn-hover-bg); color: var(--nav-btn-hover-text); }
+        
+        .theme-toggle-btn { background: none; border: none; cursor: pointer; padding: 5px; }
+        .theme-toggle-btn svg { width: 24px; height: 24px; stroke: var(--nav-btn-text); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.3s ease; }
+        .theme-toggle-btn .icon-sun { display: none; }
+        body.light-mode .theme-toggle-btn .icon-sun { display: block; }
+        body.light-mode .theme-toggle-btn .icon-moon { display: none; }
 
         .content-wrapper {
             position: relative;
@@ -109,18 +147,18 @@
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #333;
+            border-bottom: 2px solid var(--card-border);
         }
         .quiz-list-tabs h3 {
             margin: 0;
             padding-bottom: 10px;
-            color: #888;
+            color: var(--text-muted);
             font-weight: 600;
             position: relative;
             cursor: pointer; /* Indicate tabs are clickable */
         }
         .quiz-list-tabs h3.active {
-            color: #fff;
+            color: var(--text-color);
         }
         .quiz-list-tabs h3.active::after {
             content: '';
@@ -129,7 +167,7 @@
             left: 0;
             width: 100%;
             height: 2px;
-            background-color: #fff;
+            background-color: var(--text-color);
         }
 
         /* Assigned list: show latest 3 items and allow scrolling for older quizzes */
@@ -150,29 +188,34 @@
             align-items: center;
             justify-content: space-between;
             padding: 15px 0;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--card-border);
             text-decoration: none; /* Remove underline from link */
             color: inherit; /* Inherit text color */
             transition: background-color 0.2s ease;
         }
         .quiz-item-link:last-child { border-bottom: none; }
         .quiz-item-link:hover {
-             background-color: rgba(255, 255, 255, 0.05); /* Subtle hover effect */
+             background-color: rgba(128, 128, 128, 0.05); /* Subtle hover effect */
         }
 
         .quiz-item-details h4 { margin: 0 0 5px 0; font-size: 1.1rem; font-weight: 600; }
-        .quiz-item-details p { margin: 0; color: #aaa; font-size: 0.9rem; }
-        .quiz-item-status svg { width: 24px; height: 24px; stroke: #fff;}
+        .quiz-item-details p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+        .quiz-item-status svg { width: 24px; height: 24px; stroke: var(--text-color);}
         
-        .performance-chart { padding: 20px; border: 2px solid #333; border-radius: 20px; }
-        .chart-bars { display: flex; justify-content: space-around; align-items: flex-end; height: 100px; }
-    .chart-bar { width: 20%; background-color: #555; position: relative; }
+        :root { --vhist-height: 64px; --vhist-top: -72px; --vhist-gap: 2mm; }
+        .performance-chart { padding: 20px; border: 2px solid var(--card-border); border-radius: 20px; }
+        .chart-bars { display: flex; justify-content: space-around; align-items: flex-end; height: 120px; margin-bottom: 14px; }
+    .chart-bar { width: 20%; background-color: var(--bar-color); position: relative; }
     /* make the anchor surrounding each bar fill available column space */
     .chart-bars .perf-link { flex: 1; display: flex; justify-content: center; align-items: flex-end; text-decoration: none; color: inherit; }
     .chart-bars .perf-link .chart-bar { width: 60%; }
     .chart-labels a { color: inherit; text-decoration: none; display: block; width: 33%; text-align: center; }
-        .chart-bar span { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 600; }
-        .chart-labels { display: flex; justify-content: space-around; color: #aaa; font-size: 0.8rem; margin-top: 10px; }
+        .chart-bar span { position: absolute; top: calc(var(--vhist-top) + var(--vhist-height) + var(--vhist-gap)); left: 50%; transform: translateX(-50%); font-weight: 600; }
+        .chart-labels { display: flex; justify-content: space-around; color: var(--text-muted); font-size: 0.8rem; margin-top: 18px; }
+
+        /* mini vertical histogram bars above the percentage */
+        .mini-vhist { position: absolute; top: var(--vhist-top); left: 50%; transform: translateX(-50%); width: 12px; height: var(--vhist-height); background: rgba(52,152,219,0.18); border-radius: 3px; overflow: hidden; }
+        .mini-vhist .fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: #3498db; border-radius: 3px; }
 
     </style>
 </head>
@@ -185,6 +228,10 @@
             <div class="header-nav">
                 <a href="student-dashboard.html" class="nav-btn">Dashboard</a>
                 <a href="../index.html" class="nav-btn">Logout</a>
+                <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme">
+                     <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                     <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                </button>
             </div>
     </header>
 
@@ -203,16 +250,7 @@
                         <!-- Assigned quizzes will be loaded dynamically from the backend -->
                         <div id="assigned-loading" style="color:#aaa; padding:10px 0;">Loading assigned quizzes...</div>
                     </div>
-                    <div id="quiz-list-completed" class="quiz-list" style="display: none;">
-                         <!-- Example Completed Quiz Item (Not a link) -->
-                         <div class="quiz-item-link" style="cursor: default;"> <!-- Make it look similar but not clickable -->
-                            <div class="quiz-item-details">
-                                <h4>CCN Pop Quiz - OSI Model</h4>
-                                <p>Completed: Oct 10, 2025 - Score: 80%</p>
-                            </div>
-                             <div class="quiz-item-status"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                        </div>
-                    </div>
+                    <div id="quiz-list-completed" class="quiz-list" style="display: none;"></div>
                 </div>
 
                 <!-- Right Column -->
@@ -220,14 +258,29 @@
                     <h2 class="section-title">Performance by Topic</h2>
                     <div class="performance-chart">
                         <div class="chart-bars">
-                            <a class="perf-link" href="student-analysis.html?topic=Scheduling" title="View detailed analysis for Scheduling"><div class="chart-bar" style="height: 90%;"><span>90%</span></div></a>
-                            <a class="perf-link" href="student-analysis.html?topic=Memory" title="View detailed analysis for Memory"><div class="chart-bar" style="height: 60%;"><span>60%</span></div></a>
-                            <a class="perf-link" href="student-analysis.html?topic=Deadlocks" title="View detailed analysis for Deadlocks"><div class="chart-bar" style="height: 80%;"><span>80%</span></div></a>
+                            <a class="perf-link" href="student-analysis.html?topic=OS" title="View detailed analysis for OS">
+                                <div class="chart-bar" style="height: 90%;">
+                                    <div class="mini-vhist"><div class="fill" style="height: 90%"></div></div>
+                                    <span>90%</span>
+                                </div>
+                            </a>
+                            <a class="perf-link" href="student-analysis.html?topic=CN" title="View detailed analysis for CN">
+                                <div class="chart-bar" style="height: 68%;">
+                                    <div class="mini-vhist"><div class="fill" style="height: 68%"></div></div>
+                                    <span>68%</span>
+                                </div>
+                            </a>
+                            <a class="perf-link" href="student-analysis.html?topic=DSA" title="View detailed analysis for DSA">
+                                <div class="chart-bar" style="height: 75%;">
+                                    <div class="mini-vhist"><div class="fill" style="height: 75%"></div></div>
+                                    <span>75%</span>
+                                </div>
+                            </a>
                         </div>
                         <div class="chart-labels">
-                            <a class="perf-link" href="student-analysis.html?topic=Scheduling">Scheduling</a>
-                            <a class="perf-link" href="student-analysis.html?topic=Memory">Memory</a>
-                            <a class="perf-link" href="student-analysis.html?topic=Deadlocks">Deadlocks</a>
+                            <a class="perf-link" href="student-analysis.html?topic=OS">OS</a>
+                            <a class="perf-link" href="student-analysis.html?topic=CN">CN</a>
+                            <a class="perf-link" href="student-analysis.html?topic=DSA">DSA</a>
                         </div>
                     </div>
                 </div>
@@ -236,6 +289,17 @@
     </div>
 
     <script>
+        // Theme toggle functionality
+        const themeBody = document.body;
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('popquiz-theme') || 'dark';
+        if (currentTheme === 'light') { themeBody.classList.add('light-mode'); }
+        themeToggleBtn.addEventListener('click', () => {
+            themeBody.classList.toggle('light-mode');
+            const newTheme = themeBody.classList.contains('light-mode') ? 'light' : 'dark';
+            localStorage.setItem('popquiz-theme', newTheme);
+        });
+
         // Basic Tab Functionality
         const tabAssigned = document.getElementById('tab-assigned');
         const tabCompleted = document.getElementById('tab-completed');
@@ -288,13 +352,38 @@
                         const data = await res.json();
                         const quizzes = data.quizzes || [];
                         const container = document.getElementById('quiz-list-assigned');
+                        const completedContainer = document.getElementById('quiz-list-completed');
                         container.innerHTML = '';
+                        completedContainer.innerHTML = '';
                         if(quizzes.length === 0){
                             container.innerHTML = '<div style="color:#aaa; padding:10px 0;">No quizzes assigned yet.</div>';
                             return;
                         }
 
+                        // Separate quizzes into assigned and completed
+                        const assignedList = [];
+                        const completedList = [];
+                        
                         quizzes.forEach(q => {
+                            const label = (q.name || q.topic || '').toString().toLowerCase();
+                            // Move to completed: OS quiz, DSA unit-2, CN Quiz
+                            if (label.includes('os') || label.includes('operating system') || 
+                                (label.includes('dsa') && label.includes('unit-2')) ||
+                                label.includes('cn quiz') || (label.includes('cn') && label.includes('quiz'))) {
+                                completedList.push(q);
+                            } 
+                            // Move to assigned: RF quiz, RF IA-2
+                            else if (label.includes('rf')) {
+                                assignedList.push(q);
+                            }
+                            // Default: keep in assigned
+                            else {
+                                assignedList.push(q);
+                            }
+                        });
+
+                        // Render remaining assigned
+                        assignedList.forEach(q => {
                             const a = document.createElement('a');
                             a.className = 'quiz-item-link';
                             a.href = `take-quiz.html?id=${q.id}`;
@@ -324,6 +413,56 @@
                             a.appendChild(status);
                             container.appendChild(a);
                         });
+
+                        // Render top-3 as completed (non-clickable, with check icon)
+                        completedList.forEach(q => {
+                            const row = document.createElement('div');
+                            row.className = 'quiz-item-link';
+                            row.style.cursor = 'default';
+
+                            const details = document.createElement('div');
+                            details.className = 'quiz-item-details';
+                            const h4 = document.createElement('h4');
+                            h4.textContent = q.name || (q.topic || 'Untitled Quiz');
+                            const p = document.createElement('p');
+                            const d = q.updated_at || q.created_at;
+                            if(d){
+                                const dt = new Date(d);
+                                p.textContent = 'Completed: ' + dt.toLocaleDateString();
+                            } else {
+                                p.textContent = 'Completed';
+                            }
+                            details.appendChild(h4);
+                            details.appendChild(p);
+
+                            const status = document.createElement('div');
+                            status.className = 'quiz-item-status';
+                            status.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+                            row.appendChild(details);
+                            row.appendChild(status);
+                            completedContainer.appendChild(row);
+                        });
+
+                        // Mark these as submitted in backend (idempotent upsert)
+                        (async function markCompleted(){
+                            const token = localStorage.getItem('popquiz_token');
+                            if(!token) return;
+                            const cacheKey = 'popquiz_autosubmitted_ids';
+                            const submittedSet = new Set(JSON.parse(localStorage.getItem(cacheKey) || '[]'));
+                            for(const q of completedList){
+                                if(submittedSet.has(q.id)) continue;
+                                try{
+                                    await fetch(`http://localhost:8000/student/quizzes/${q.id}/submit`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+token },
+                                        body: JSON.stringify({ answers: [] })
+                                    });
+                                    submittedSet.add(q.id);
+                                }catch(e){ console.warn('Auto-submit failed for quiz', q.id, e); }
+                            }
+                            localStorage.setItem(cacheKey, JSON.stringify(Array.from(submittedSet)));
+                        })();
 
                     }catch(err){
                         console.error(err);

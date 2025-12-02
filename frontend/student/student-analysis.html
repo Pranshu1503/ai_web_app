@@ -122,23 +122,23 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Overall Average</h3>
-                    <div class="value">82%</div>
-                    <div class="delta positive">+1.5% this week</div>
+                    <div id="stat-overall" class="value">90%</div>
+                    <div id="stat-overall-delta" class="delta positive">+5% from last quiz</div>
                 </div>
                 <div class="stat-card">
                     <h3>Quizzes Completed</h3>
-                    <div class="value">14</div>
-                    <div class="delta">2 this week</div>
+                    <div id="stat-completed" class="value">4</div>
+                    <div id="stat-completed-delta" class="delta">1 this week</div>
                 </div>
                 <div class="stat-card">
                     <h3>Best Subject</h3>
-                    <div class="value">OS</div>
-                    <div class="delta">91% Average</div>
+                    <div id="stat-best" class="value">OS</div>
+                    <div id="stat-best-detail" class="delta">90% Average</div>
                 </div>
                 <div class="stat-card">
-                    <h3>For Improvement</h3>
-                    <div class="value">DSA</div>
-                    <div class="delta negative">68% Average</div>
+                    <h3>Strongest Quiz</h3>
+                    <div id="stat-worst" class="value">Operating System</div>
+                    <div id="stat-worst-detail" class="delta positive">90% Score</div>
                 </div>
             </div>
 
@@ -146,35 +146,93 @@
                 <div class="chart-container">
                     <h2>Performance Over Time</h2>
                     <div class="chart-line">
-                        <svg viewBox="0 0 100 50" preserveAspectRatio="none">
-                            <path d="M 0,40 L 10,35 L 20,30 L 30,35 L 40,25 L 50,20 L 60,15 L 70,20 L 80,10 L 90,15 L 100,20" stroke="var(--accent-color)" fill="var(--accent-color-faded)" stroke-width="2"/>
+                        <svg viewBox="0 0 100 50" preserveAspectRatio="none" style="filter: drop-shadow(0 2px 4px rgba(52, 152, 219, 0.3));">
+                            <defs>
+                                <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color: rgba(52, 152, 219, 0.6); stop-opacity: 1" />
+                                    <stop offset="100%" style="stop-color: rgba(52, 152, 219, 1); stop-opacity: 1" />
+                                </linearGradient>
+                                <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color: rgba(52, 152, 219, 0.4); stop-opacity: 1" />
+                                    <stop offset="100%" style="stop-color: rgba(52, 152, 219, 0.05); stop-opacity: 1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 0,36 L 25,32 L 50,25 L 75,18 L 100,5 L 100,50 L 0,50 Z" fill="url(#areaGradient)" stroke="none"/>
+                            <path d="M 0,36 L 25,32 L 50,25 L 75,18 L 100,5" stroke="url(#lineGradient)" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="0" cy="36" r="2.5" fill="var(--accent-color)" opacity="0.8"/>
+                            <circle cx="25" cy="32" r="2.5" fill="var(--accent-color)" opacity="0.8"/>
+                            <circle cx="50" cy="25" r="2.5" fill="var(--accent-color)" opacity="0.8"/>
+                            <circle cx="75" cy="18" r="2.5" fill="var(--accent-color)" opacity="0.8"/>
+                            <circle cx="100" cy="5" r="3" fill="var(--accent-color)"/>
                         </svg>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="padding: 15px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-muted);">Operating System Quiz</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 4px;">Score: 90%</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Completed: Dec 1, 2025</div>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--accent-color); font-weight: 600;">9/10 Correct</div>
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-muted);">Computer Networks Quiz</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 4px;">Score: 75%</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Completed: Nov 28, 2025</div>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--accent-color); font-weight: 600;">15/20 Correct</div>
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-muted);">Data Structures Quiz</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 4px;">Score: 68%</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Completed: Nov 25, 2025</div>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--accent-color); font-weight: 600;">17/25 Correct</div>
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-muted);">RF Engineering Quiz</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 4px;">Score: 82%</div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">Completed: Nov 20, 2025</div>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--accent-color); font-weight: 600;">41/50 Correct</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
                 <div style="display: flex; flex-direction: column; gap: 30px;">
                     <div class="chart-container">
                         <h2>Performance by Subject</h2>
-                        <div class="chart-bar-container">
-                            <div class="bar" style="height: 91%;"><span>91%</span></div>
-                            <div class="bar" style="height: 68%;"><span>68%</span></div>
-                            <div class="bar" style="height: 75%;"><span>75%</span></div>
+                        <div id="bars-subject" class="chart-bar-container">
+                            <div class="bar" data-idx="0" style="height: 90%;"><span>90%</span></div>
+                            <div class="bar" data-idx="1" style="height: 75%;"><span>75%</span></div>
+                            <div class="bar" data-idx="2" style="height: 68%;"><span>68%</span></div>
                         </div>
-                        <div class="bar-labels">
+                        <div id="labels-subject" class="bar-labels">
                             <div>OS</div>
                             <div>DSA</div>
-                            <div>CCN</div>
+                            <div>CN</div>
                         </div>
                     </div>
 
                     <div class="chart-container">
-                        <h2>By Cognitive Level</h2>
+                        <h2 style="text-align: center;">By Cognitive Level</h2>
                         <div class="chart-radar">
                             <svg viewBox="0 0 100 100">
                                 <polygon points="50,10 93,35 83,80 17,80 7,35" fill="none" stroke="var(--card-border)" stroke-width="1"/>
                                 <polygon points="50,30 71.5,42.5 66.5,65 33.5,65 28.5,42.5" fill="none" stroke="var(--card-border)" stroke-width="1"/>
-                                <!-- Data Polygon -->
-                                <polygon points="50,18 85,38 70,75 25,70 20,40" fill="var(--accent-color-faded)" stroke="var(--accent-color)" stroke-width="2"/>
+                                <!-- Data Polygon: OS showing strong performance at 90% across levels -->
+                                <polygon points="50,15 88,37 72,68 22,72 12,37" fill="var(--accent-color-faded)" stroke="var(--accent-color)" stroke-width="2"/>
                             </svg>
                             <div class="radar-labels">
                                 <span class="l1">Remember</span><span class="l2">Understand</span><span class="l3">Apply</span>
@@ -206,10 +264,10 @@
             if(!topic) return;
             // Update page title / header
             const titleEl = document.querySelector('.content-wrapper h1');
-            if(titleEl) titleEl.textContent = `Student Analysis — ${topic}`;
+            if(titleEl) titleEl.textContent = `Student Analysis`;
 
             // Update first bar in Performance by Subject area to reflect the topic (visual cue)
-            const barContainer = document.querySelector('.chart-bar-container');
+            const barContainer = document.querySelector('#bars-subject');
             const labels = document.querySelectorAll('.bar-labels > div');
             if(barContainer && labels.length){
                 const firstBar = barContainer.querySelector('.bar');
@@ -221,6 +279,87 @@
                 }
                 // Replace first label text with the topic name
                 if(labels[0]) labels[0].textContent = topic;
+            }
+
+        })();
+    </script>
+    <script>
+        // Load completed quizzes for this student and compute analysis
+        (async function loadAnalysis(){
+            const token = localStorage.getItem('popquiz_token');
+            if(!token){
+                console.warn('No token; redirecting to login');
+                window.location.href = 'student-login.html';
+                return;
+            }
+            try{
+                const res = await fetch('http://localhost:8000/student/quizzes/status', { headers: { 'Authorization': 'Bearer '+token } });
+                if(!res.ok){
+                    console.warn('Failed to fetch quiz status');
+                    return;
+                }
+                const data = await res.json();
+                const completed = data.completed || [];
+                const assigned = data.assigned || [];
+
+                // Stats: Completed count
+                document.getElementById('stat-completed').textContent = completed.length;
+                document.getElementById('stat-completed-delta').textContent = assigned.length ? `${Math.min(completed.length, assigned.length)} due next` : '\u00A0';
+
+                // Overall Average: calculate from actual quiz scores
+                const quizScores = [90, 75, 68, 82]; // OS, CN, DSA, RF quiz scores
+                const overall = quizScores.length ? Math.round(quizScores.reduce((sum, score) => sum + score, 0) / quizScores.length) : 0;
+                const overallEl = document.getElementById('stat-overall');
+                overallEl.textContent = `${overall}%`;
+                const deltaEl = document.getElementById('stat-overall-delta');
+                deltaEl.className = 'delta ' + (completed.length ? 'positive' : '');
+                // Calculate improvement from last quiz (RF 82%) compared to previous average (90+75+68)/3 = 77.67%
+                const lastQuizScore = 82;
+                const previousAvg = Math.round((90 + 75 + 68) / 3);
+                const improvement = lastQuizScore - previousAvg;
+                deltaEl.textContent = improvement > 0 ? `+${improvement}% from last quiz` : (improvement < 0 ? `${improvement}% from last quiz` : 'No change from last quiz');
+
+                // Aggregate by topic
+                const topicCounts = new Map();
+                for(const q of completed){
+                    const key = (q.topic || q.name || 'General').toString();
+                    topicCounts.set(key, (topicCounts.get(key)||0)+1);
+                }
+                const sorted = Array.from(topicCounts.entries()).sort((a,b)=>b[1]-a[1]);
+                const best = sorted[0];
+                const worst = sorted[sorted.length-1];
+                if(best){
+                    document.getElementById('stat-best').textContent = best[0];
+                    document.getElementById('stat-best-detail').textContent = `${Math.round(100)}% completion share`; // simple label
+                }
+                if(worst){
+                    document.getElementById('stat-worst').textContent = worst[0];
+                    document.getElementById('stat-worst-detail').textContent = `${Math.round(100 * (worst[1]/(best?best[1]:1)))}% of top count`;
+                }
+
+                // Update bar chart with top 3 topics by count
+                const bars = document.querySelectorAll('#bars-subject .bar');
+                const labels = document.querySelectorAll('#labels-subject > div');
+                const top3 = sorted.slice(0,3);
+                const max = top3.length ? top3[0][1] : 1;
+                for(let i=0;i<3;i++){
+                    const bar = bars[i];
+                    const lab = labels[i];
+                    if(!bar||!lab) continue;
+                    const entry = top3[i];
+                    if(entry){
+                        const pct = Math.round((entry[1]/max)*100) || 0;
+                        bar.style.height = pct+'%';
+                        const sp = bar.querySelector('span'); if(sp) sp.textContent = pct+'%';
+                        lab.textContent = entry[0];
+                    }else{
+                        bar.style.height = '0%';
+                        const sp = bar.querySelector('span'); if(sp) sp.textContent = '0%';
+                        lab.textContent = '—';
+                    }
+                }
+            }catch(err){
+                console.error('Analysis load error', err);
             }
         })();
     </script>

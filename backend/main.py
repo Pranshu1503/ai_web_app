@@ -9,6 +9,10 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 import json
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
 
 app = FastAPI(title="PopQuiz AI Backend", description="AI-Powered Quiz Generation System")
 
@@ -21,6 +25,13 @@ app.add_middleware(
 )
 
 security = HTTPBearer()
+
+# Email Configuration (Use environment variables in production)
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "your-email@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "your-app-password")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8001")
 
 # Pydantic Models
 class UserSignup(BaseModel):
@@ -64,10 +75,11 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT DEFAULT 'teacher',
+            is_verified INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # Ensure role column exists for older DBs
+    # Ensure role and is_verified columns exist for older DBs
     cursor.execute("PRAGMA table_info(users)")
     cols = [row[1] for row in cursor.fetchall()]
     if 'role' not in cols:
@@ -75,6 +87,23 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'teacher'")
         except Exception:
             pass
+    if 'is_verified' not in cols:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+        except Exception:
+            pass
+    
+    # Verification tokens table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS verification_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
     
     # Sessions table
     cursor.execute('''
